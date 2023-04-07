@@ -38,6 +38,9 @@ public class BufferPool {
      */
     public static final int DEFAULT_PAGES = 50;
 
+    private final Page[] pages;
+    private int index;
+
     /**
      * Creates a BufferPool that caches up to numPages pages.
      *
@@ -45,6 +48,7 @@ public class BufferPool {
      */
     public BufferPool(int numPages) {
         // TODO: some code goes here
+        pages = new Page[numPages];
     }
 
     public static int getPageSize() {
@@ -76,10 +80,16 @@ public class BufferPool {
      * @param pid  the ID of the requested page
      * @param perm the requested permissions on the page
      */
-    public Page getPage(TransactionId tid, PageId pid, Permissions perm)
-            throws TransactionAbortedException, DbException {
+    public synchronized Page getPage(TransactionId tid, PageId pid, Permissions perm)
+            throws TransactionAbortedException, DbException, IOException {
         // TODO: some code goes here
-        return null;
+        for (Page page : pages) {
+            if (page.getId() == pid) {
+                return page;
+            }
+        }
+        pages[index] = new HeapPage(new HeapPageId(pid.getTableId(), pid.getPageNumber()), null);
+        return pages[index++];
     }
 
     /**
