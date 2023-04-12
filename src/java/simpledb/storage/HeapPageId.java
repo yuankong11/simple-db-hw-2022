@@ -21,6 +21,11 @@ public class HeapPageId implements PageId {
         pageNumber = pgNo;
     }
 
+    public HeapPageId(PageId id) {
+        tableID = id.getTableId();
+        pageNumber = id.getPageNumber();
+    }
+
     /**
      * @return the table associated with this PageId
      */

@@ -1,9 +1,6 @@
 package simpledb.storage;
 
-import simpledb.common.Database;
-import simpledb.common.DbException;
-import simpledb.common.DeadlockException;
-import simpledb.common.Permissions;
+import simpledb.common.*;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
 
@@ -39,6 +36,7 @@ public class BufferPool {
     public static final int DEFAULT_PAGES = 50;
 
     private final Page[] pages;
+    private final HashMap<PageId, Page> pageMap;
     private int index;
 
     /**
@@ -49,6 +47,7 @@ public class BufferPool {
     public BufferPool(int numPages) {
         // TODO: some code goes here
         pages = new Page[numPages];
+        pageMap = new HashMap<>();
     }
 
     public static int getPageSize() {
@@ -83,12 +82,17 @@ public class BufferPool {
     public synchronized Page getPage(TransactionId tid, PageId pid, Permissions perm)
             throws TransactionAbortedException, DbException, IOException {
         // TODO: some code goes here
-        for (Page page : pages) {
-            if (page.getId() == pid) {
-                return page;
+        if (pageMap.containsKey(pid)) {
+            return pageMap.get(pid);
+        }
+        for (int i = 0; i < index; i++) {
+            if (pages[i].getId() == pid) {
+                pageMap.put(pid, pages[i]);
+                return pages[i];
             }
         }
-        pages[index] = new HeapPage(new HeapPageId(pid.getTableId(), pid.getPageNumber()), null);
+        pages[index] = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
+        pageMap.put(pid, pages[index]);
         return pages[index++];
     }
 
