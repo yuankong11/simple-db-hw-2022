@@ -3,9 +3,7 @@ package simpledb.storage;
 import simpledb.common.Type;
 
 import java.io.Serializable;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 /**
  * TupleDesc describes the schema of a tuple.
@@ -37,7 +35,21 @@ public class TupleDesc implements Serializable {
         public String toString() {
             return fieldName + "(" + fieldType + ")";
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            TDItem tdItem = (TDItem) o;
+            return fieldType == tdItem.fieldType && Objects.equals(fieldName, tdItem.fieldName);
+        }
     }
+
+    private static final long serialVersionUID = 1L;
+
+    private final ArrayList<TDItem> items;
+    private HashMap<String, Integer> name;
+    private int size = 0;
 
     /**
      * @return An iterator which iterates over all the field TDItems
@@ -45,10 +57,8 @@ public class TupleDesc implements Serializable {
      */
     public Iterator<TDItem> iterator() {
         // TODO: some code goes here
-        return null;
+        return items.iterator();
     }
-
-    private static final long serialVersionUID = 1L;
 
     /**
      * Create a new TupleDesc with typeAr.length fields with fields of the
@@ -59,8 +69,36 @@ public class TupleDesc implements Serializable {
      * @param fieldAr array specifying the names of the fields. Note that names may
      *                be null.
      */
-    public TupleDesc(Type[] typeAr, String[] fieldAr) {
+    public TupleDesc(Type[] typeAr, String[] fieldAr) throws IllegalArgumentException {
         // TODO: some code goes here
+        if (typeAr == null || typeAr.length == 0) {
+            throw new IllegalArgumentException();
+        }
+        if (fieldAr != null && fieldAr.length != typeAr.length) {
+            throw new IllegalArgumentException();
+        }
+        items = new ArrayList<>(typeAr.length);
+        if (fieldAr != null) {
+            name = new HashMap<>();
+        }
+        for (int i = 0; i < typeAr.length; i++) {
+            if (fieldAr != null) {
+                items.add(new TDItem(typeAr[i], fieldAr[i]));
+                name.putIfAbsent(fieldAr[i], i);
+            } else {
+                items.add(new TDItem(typeAr[i], null));
+            }
+            size += typeAr[i].getLen();
+        }
+    }
+
+    public TupleDesc(TupleDesc t) throws IllegalArgumentException {
+        if (t == null) {
+            throw new IllegalArgumentException();
+        }
+        this.items = new ArrayList<>(t.items);
+        this.name = new HashMap<>(t.name);
+        this.size = t.size;
     }
 
     /**
@@ -70,8 +108,9 @@ public class TupleDesc implements Serializable {
      * @param typeAr array specifying the number of and types of fields in this
      *               TupleDesc. It must contain at least one entry.
      */
-    public TupleDesc(Type[] typeAr) {
+    public TupleDesc(Type[] typeAr) throws IllegalArgumentException {
         // TODO: some code goes here
+        this(typeAr, null);
     }
 
     /**
@@ -79,7 +118,14 @@ public class TupleDesc implements Serializable {
      */
     public int numFields() {
         // TODO: some code goes here
-        return 0;
+        return items.size();
+    }
+
+    private TDItem getItem(int i) throws NoSuchElementException {
+        if (i >= items.size()) {
+            throw new NoSuchElementException();
+        }
+        return items.get(i);
     }
 
     /**
@@ -91,7 +137,7 @@ public class TupleDesc implements Serializable {
      */
     public String getFieldName(int i) throws NoSuchElementException {
         // TODO: some code goes here
-        return null;
+        return getItem(i).fieldName;
     }
 
     /**
@@ -104,7 +150,7 @@ public class TupleDesc implements Serializable {
      */
     public Type getFieldType(int i) throws NoSuchElementException {
         // TODO: some code goes here
-        return null;
+        return getItem(i).fieldType;
     }
 
     /**
@@ -116,7 +162,10 @@ public class TupleDesc implements Serializable {
      */
     public int indexForFieldName(String name) throws NoSuchElementException {
         // TODO: some code goes here
-        return 0;
+        if (this.name == null || !this.name.containsKey(name)) {
+            throw new NoSuchElementException();
+        }
+        return this.name.get(name);
     }
 
     /**
@@ -125,7 +174,7 @@ public class TupleDesc implements Serializable {
      */
     public int getSize() {
         // TODO: some code goes here
-        return 0;
+        return size;
     }
 
     /**
@@ -138,7 +187,18 @@ public class TupleDesc implements Serializable {
      */
     public static TupleDesc merge(TupleDesc td1, TupleDesc td2) {
         // TODO: some code goes here
-        return null;
+        if (td1 == null || td2 == null) {
+            throw new RuntimeException();
+        }
+        TupleDesc td = new TupleDesc(td1);
+        Iterator<TDItem> it2 = td2.iterator();
+        while (it2.hasNext()) {
+            TDItem item = it2.next();
+            td.items.add(item);
+            td.name.putIfAbsent(item.fieldName, td.items.size() - 1);
+            td.size += item.fieldType.getLen();
+        }
+        return td;
     }
 
     /**
@@ -153,7 +213,18 @@ public class TupleDesc implements Serializable {
 
     public boolean equals(Object o) {
         // TODO: some code goes here
-        return false;
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        TupleDesc td = (TupleDesc) o;
+        if (this.size == td.size && this.items.equals(td.items)) {
+            if (this.name == null) {
+                return td.name == null;
+            } else {
+                return this.name.equals(td.name);
+            }
+        } else {
+            return false;
+        }
     }
 
     public int hashCode() {
@@ -169,8 +240,12 @@ public class TupleDesc implements Serializable {
      *
      * @return String describing this descriptor.
      */
+    @Override
     public String toString() {
-        // TODO: some code goes here
-        return "";
+        return "TupleDesc{" +
+                "items=" + items +
+                ", nameMap=" + name +
+                ", size=" + size +
+                '}';
     }
 }

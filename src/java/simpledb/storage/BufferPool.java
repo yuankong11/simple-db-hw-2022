@@ -1,9 +1,6 @@
 package simpledb.storage;
 
-import simpledb.common.Database;
-import simpledb.common.DbException;
-import simpledb.common.DeadlockException;
-import simpledb.common.Permissions;
+import simpledb.common.*;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
 
@@ -38,6 +35,10 @@ public class BufferPool {
      */
     public static final int DEFAULT_PAGES = 50;
 
+    private final Page[] pages;
+    private final HashMap<PageId, Page> pageMap;
+    private int index;
+
     /**
      * Creates a BufferPool that caches up to numPages pages.
      *
@@ -45,6 +46,8 @@ public class BufferPool {
      */
     public BufferPool(int numPages) {
         // TODO: some code goes here
+        pages = new Page[numPages];
+        pageMap = new HashMap<>();
     }
 
     public static int getPageSize() {
@@ -76,10 +79,21 @@ public class BufferPool {
      * @param pid  the ID of the requested page
      * @param perm the requested permissions on the page
      */
-    public Page getPage(TransactionId tid, PageId pid, Permissions perm)
-            throws TransactionAbortedException, DbException {
+    public synchronized Page getPage(TransactionId tid, PageId pid, Permissions perm)
+            throws TransactionAbortedException, DbException, IOException {
         // TODO: some code goes here
-        return null;
+        if (pageMap.containsKey(pid)) {
+            return pageMap.get(pid);
+        }
+        for (int i = 0; i < index; i++) {
+            if (pages[i].getId() == pid) {
+                pageMap.put(pid, pages[i]);
+                return pages[i];
+            }
+        }
+        pages[index] = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
+        pageMap.put(pid, pages[index]);
+        return pages[index++];
     }
 
     /**
