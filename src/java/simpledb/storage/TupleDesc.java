@@ -78,9 +78,7 @@ public class TupleDesc implements Serializable {
             throw new IllegalArgumentException();
         }
         items = new ArrayList<>(typeAr.length);
-        if (fieldAr != null) {
-            name = new HashMap<>();
-        }
+        name = new HashMap<>();
         for (int i = 0; i < typeAr.length; i++) {
             if (fieldAr != null) {
                 items.add(new TDItem(typeAr[i], fieldAr[i]));
@@ -162,7 +160,7 @@ public class TupleDesc implements Serializable {
      */
     public int indexForFieldName(String name) throws NoSuchElementException {
         // TODO: some code goes here
-        if (this.name == null || !this.name.containsKey(name)) {
+        if (!this.name.containsKey(name)) {
             throw new NoSuchElementException();
         }
         return this.name.get(name);
@@ -195,7 +193,9 @@ public class TupleDesc implements Serializable {
         while (it2.hasNext()) {
             TDItem item = it2.next();
             td.items.add(item);
-            td.name.putIfAbsent(item.fieldName, td.items.size() - 1);
+            if (item.fieldName != null) {
+                td.name.putIfAbsent(item.fieldName, td.items.size() - 1);
+            }
             td.size += item.fieldType.getLen();
         }
         return td;
@@ -217,11 +217,7 @@ public class TupleDesc implements Serializable {
         if (o == null || getClass() != o.getClass()) return false;
         TupleDesc td = (TupleDesc) o;
         if (this.size == td.size && this.items.equals(td.items)) {
-            if (this.name == null) {
-                return td.name == null;
-            } else {
-                return this.name.equals(td.name);
-            }
+            return this.name.equals(td.name);
         } else {
             return false;
         }
@@ -244,7 +240,7 @@ public class TupleDesc implements Serializable {
     public String toString() {
         return "TupleDesc{" +
                 "items=" + items +
-                ", nameMap=" + name +
+                ", name=" + name +
                 ", size=" + size +
                 '}';
     }
