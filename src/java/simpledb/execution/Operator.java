@@ -59,6 +59,11 @@ public abstract class Operator implements OpIterator {
         this.open = false;
     }
 
+    @Override
+    public void rewind() throws DbException, TransactionAbortedException {
+        next = null;
+    }
+
     private Tuple next = null;
     private boolean open = false;
     private int estimatedCardinality = 0;

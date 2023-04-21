@@ -1,12 +1,15 @@
 package simpledb.execution;
 
 import simpledb.common.Type;
+import simpledb.storage.Field;
+import simpledb.storage.IntField;
+import simpledb.storage.StringField;
 import simpledb.storage.Tuple;
 
 /**
  * Knows how to compute some aggregate over a set of StringFields.
  */
-public class StringAggregator implements Aggregator {
+public class StringAggregator extends IntegerAggregator implements Aggregator {
 
     private static final long serialVersionUID = 1L;
 
@@ -19,9 +22,17 @@ public class StringAggregator implements Aggregator {
      * @param what        aggregation operator to use -- only supports COUNT
      * @throws IllegalArgumentException if what != COUNT
      */
-
-    public StringAggregator(int gbfield, Type gbfieldtype, int afield, Op what) {
+    public StringAggregator(int gbfield, Type gbfieldtype, int afield, Op what) throws IllegalArgumentException {
         // TODO: some code goes here
+        super(gbfield, gbfieldtype, afield, what);
+        if (what != Op.COUNT) {
+            throw new IllegalArgumentException();
+        }
+    }
+
+    @Override
+    Object getValue(Tuple tuple) throws ClassCastException {
+        return ((StringField) tuple.getField(valueField)).getValue();
     }
 
     /**
@@ -31,6 +42,7 @@ public class StringAggregator implements Aggregator {
      */
     public void mergeTupleIntoGroup(Tuple tup) {
         // TODO: some code goes here
+        super.mergeTupleIntoGroup(tup);
     }
 
     /**
@@ -43,7 +55,6 @@ public class StringAggregator implements Aggregator {
      */
     public OpIterator iterator() {
         // TODO: some code goes here
-        throw new UnsupportedOperationException("please implement me for lab2");
+        return super.iterator();
     }
-
 }
