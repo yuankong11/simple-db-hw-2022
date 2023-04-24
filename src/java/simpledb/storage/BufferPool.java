@@ -35,9 +35,7 @@ public class BufferPool {
      */
     public static final int DEFAULT_PAGES = 50;
 
-    private final Page[] pages;
-    private final HashMap<PageId, Page> pageMap;
-    private int index;
+    private final ConcurrentHashMap<PageId, Page> pageMap;
 
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -46,8 +44,7 @@ public class BufferPool {
      */
     public BufferPool(int numPages) {
         // TODO: some code goes here
-        pages = new Page[numPages];
-        pageMap = new HashMap<>();
+        pageMap = new ConcurrentHashMap<>();
     }
 
     public static int getPageSize() {
@@ -79,21 +76,11 @@ public class BufferPool {
      * @param pid  the ID of the requested page
      * @param perm the requested permissions on the page
      */
-    public synchronized Page getPage(TransactionId tid, PageId pid, Permissions perm)
+    public Page getPage(TransactionId tid, PageId pid, Permissions perm)
             throws TransactionAbortedException, DbException, IOException {
         // TODO: some code goes here
-        if (pageMap.containsKey(pid)) {
-            return pageMap.get(pid);
-        }
-        for (int i = 0; i < index; i++) {
-            if (pages[i].getId() == pid) {
-                pageMap.put(pid, pages[i]);
-                return pages[i];
-            }
-        }
-        pages[index] = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
-        pageMap.put(pid, pages[index]);
-        return pages[index++];
+        pageMap.putIfAbsent(pid, Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid));
+        return pageMap.get(pid);
     }
 
     /**
@@ -141,6 +128,13 @@ public class BufferPool {
         // not necessary for lab1|lab2
     }
 
+    private void markAndBuffer(List<Page> list, TransactionId tid) {
+        for (Page page : list) {
+            page.markDirty(true, tid);
+            pageMap.putIfAbsent(page.getId(), page);
+        }
+    }
+
     /**
      * Add a tuple to the specified table on behalf of transaction tid.  Will
      * acquire a write lock on the page the tuple is added to and any other
@@ -160,6 +154,8 @@ public class BufferPool {
             throws DbException, IOException, TransactionAbortedException {
         // TODO: some code goes here
         // not necessary for lab1
+        List<Page> marked = Database.getCatalog().getDatabaseFile(tableId).insertTuple(tid, t);
+        markAndBuffer(marked, tid);
     }
 
     /**
@@ -179,6 +175,9 @@ public class BufferPool {
             throws DbException, IOException, TransactionAbortedException {
         // TODO: some code goes here
         // not necessary for lab1
+        int tableID = t.getRecordId().getPageId().getTableId();
+        List<Page> marked = Database.getCatalog().getDatabaseFile(tableID).deleteTuple(tid, t);
+        markAndBuffer(marked, tid);
     }
 
     /**
