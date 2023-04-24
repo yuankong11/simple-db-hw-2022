@@ -91,8 +91,16 @@ public class Tuple implements Serializable {
     public String toString() {
         // TODO: some code goes here
         StringBuilder sb = new StringBuilder();
-        fields.forEach(x -> sb.append(x.toString()).append('\t'));
-        return sb.substring(0, sb.length() - 1);
+        fields.forEach(x -> {
+            if (x != null) {
+                sb.append(x).append('\t');
+            }
+        });
+        if (sb.length() > 0) {
+            return sb.substring(0, sb.length() - 1);
+        } else {
+            return "";
+        }
     }
 
     /**

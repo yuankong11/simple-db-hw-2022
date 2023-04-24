@@ -146,7 +146,7 @@ public class Join extends Operator {
     }
 
     @Override
-    public void setChildren(OpIterator[] children) {
+    public void setChildren(OpIterator[] children) throws IllegalArgumentException {
         // TODO: some code goes here
         if (children == null || children.length != 2) {
             throw new IllegalArgumentException();

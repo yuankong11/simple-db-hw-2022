@@ -88,7 +88,7 @@ public abstract class Operator implements OpIterator {
      * @param children the DbIterators which are to be set as the children(child) of
      *                 this operator
      */
-    public abstract void setChildren(OpIterator[] children);
+    public abstract void setChildren(OpIterator[] children) throws IllegalArgumentException;
 
     /**
      * @return return the TupleDesc of the output tuples of this operator

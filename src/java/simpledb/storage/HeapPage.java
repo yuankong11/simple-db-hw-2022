@@ -246,18 +246,6 @@ public class HeapPage implements Page {
         return new byte[len]; //all 0
     }
 
-    private void checkTuple(Tuple t) throws DbException {
-        if (!t.getTupleDesc().equals(td)) {
-            throw new DbException("mismatched td");
-        }
-        if (!t.getRecordId().getPageId().equals(pid)) {
-            throw new DbException("mismatched pid");
-        }
-        if (t.getRecordId().getTupleNumber() > getNumTuples()) {
-            throw new DbException("too big tuple number");
-        }
-    }
-
     /**
      * Delete the specified tuple from the page; the corresponding header bit should be updated to reflect
      * that it is no longer stored on any page.
@@ -269,7 +257,15 @@ public class HeapPage implements Page {
     public void deleteTuple(Tuple t) throws DbException {
         // TODO: some code goes here
         // not necessary for lab1
-        checkTuple(t);
+        if (!t.getTupleDesc().equals(td)) {
+            throw new DbException("mismatched td");
+        }
+        if (!t.getRecordId().getPageId().equals(pid)) {
+            throw new DbException("mismatched pid");
+        }
+        if (t.getRecordId().getTupleNumber() > getNumTuples()) {
+            throw new DbException("too big tuple number");
+        }
         int tupleNumber = t.getRecordId().getTupleNumber();
         if (!isSlotUsed(tupleNumber)) {
             throw new DbException("empty slot");
@@ -288,7 +284,9 @@ public class HeapPage implements Page {
     public void insertTuple(Tuple t) throws DbException {
         // TODO: some code goes here
         // not necessary for lab1
-        checkTuple(t);
+        if (!t.getTupleDesc().equals(td)) {
+            throw new DbException("mismatched td");
+        }
         int usable = -1, i = 0;
         byte full = (byte) 0xff;
         while (i < header.length) {
