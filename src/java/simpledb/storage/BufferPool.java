@@ -1,9 +1,6 @@
 package simpledb.storage;
 
-import simpledb.common.Database;
-import simpledb.common.DbException;
-import simpledb.common.DeadlockException;
-import simpledb.common.Permissions;
+import simpledb.common.*;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
 
@@ -24,6 +21,30 @@ import java.util.concurrent.ConcurrentMap;
  * @Threadsafe, all fields are final
  */
 public class BufferPool {
+
+    static class LRUCache extends LinkedHashMap<PageId, Page> {
+        private final int cacheSize;
+
+        public LRUCache(int cacheSize) {
+            super(cacheSize, 0.75f, true);
+            this.cacheSize = cacheSize;
+        }
+
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<PageId, Page> e) {
+            boolean evict = size() > cacheSize;
+            if (evict) {
+                try {
+                    Database.getBufferPool().flushPage(e.getKey());
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                    evict = false;
+                }
+            }
+            return evict;
+        }
+    }
+
     /**
      * Bytes per page, including header.
      */
@@ -38,6 +59,8 @@ public class BufferPool {
      */
     public static final int DEFAULT_PAGES = 50;
 
+    private final LRUCache buffer;
+
     /**
      * Creates a BufferPool that caches up to numPages pages.
      *
@@ -45,6 +68,7 @@ public class BufferPool {
      */
     public BufferPool(int numPages) {
         // TODO: some code goes here
+        buffer = new LRUCache(numPages);
     }
 
     public static int getPageSize() {
@@ -77,9 +101,10 @@ public class BufferPool {
      * @param perm the requested permissions on the page
      */
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
-            throws TransactionAbortedException, DbException {
+            throws TransactionAbortedException, DbException, IOException {
         // TODO: some code goes here
-        return null;
+        buffer.putIfAbsent(pid, Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid));
+        return buffer.get(pid);
     }
 
     /**
@@ -127,6 +152,13 @@ public class BufferPool {
         // not necessary for lab1|lab2
     }
 
+    private void markAndBuffer(List<Page> list, TransactionId tid) {
+        for (Page page : list) {
+            page.markDirty(true, tid);
+            buffer.putIfAbsent(page.getId(), page);
+        }
+    }
+
     /**
      * Add a tuple to the specified table on behalf of transaction tid.  Will
      * acquire a write lock on the page the tuple is added to and any other
@@ -146,6 +178,8 @@ public class BufferPool {
             throws DbException, IOException, TransactionAbortedException {
         // TODO: some code goes here
         // not necessary for lab1
+        List<Page> marked = Database.getCatalog().getDatabaseFile(tableId).insertTuple(tid, t);
+        markAndBuffer(marked, tid);
     }
 
     /**
@@ -165,6 +199,9 @@ public class BufferPool {
             throws DbException, IOException, TransactionAbortedException {
         // TODO: some code goes here
         // not necessary for lab1
+        int tableID = t.getRecordId().getPageId().getTableId();
+        List<Page> marked = Database.getCatalog().getDatabaseFile(tableID).deleteTuple(tid, t);
+        markAndBuffer(marked, tid);
     }
 
     /**
@@ -175,7 +212,9 @@ public class BufferPool {
     public synchronized void flushAllPages() throws IOException {
         // TODO: some code goes here
         // not necessary for lab1
-
+        for (Map.Entry<PageId, Page> e : buffer.entrySet()) {
+            flushPage(e.getKey());
+        }
     }
 
     /**
@@ -190,6 +229,7 @@ public class BufferPool {
     public synchronized void removePage(PageId pid) {
         // TODO: some code goes here
         // not necessary for lab1
+        buffer.remove(pid);
     }
 
     /**
@@ -200,6 +240,14 @@ public class BufferPool {
     private synchronized void flushPage(PageId pid) throws IOException {
         // TODO: some code goes here
         // not necessary for lab1
+        if (!buffer.containsKey(pid)) {
+            return;
+        }
+        Page page = buffer.get(pid);
+        if (page.isDirty() != null) {
+            Database.getCatalog().getDatabaseFile(pid.getTableId()).writePage(page);
+            page.markDirty(false, null);
+        }
     }
 
     /**
@@ -218,5 +266,4 @@ public class BufferPool {
         // TODO: some code goes here
         // not necessary for lab1
     }
-
 }

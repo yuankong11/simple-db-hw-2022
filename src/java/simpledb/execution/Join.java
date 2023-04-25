@@ -1,10 +1,12 @@
 package simpledb.execution;
 
 import simpledb.common.DbException;
+import simpledb.storage.Field;
 import simpledb.storage.Tuple;
 import simpledb.storage.TupleDesc;
 import simpledb.transaction.TransactionAbortedException;
 
+import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 /**
@@ -13,6 +15,11 @@ import java.util.NoSuchElementException;
 public class Join extends Operator {
 
     private static final long serialVersionUID = 1L;
+
+    OpIterator[] children;
+    JoinPredicate pred;
+    Tuple tuple1;
+    TupleDesc td;
 
     /**
      * Constructor. Accepts two children to join and the predicate to join them
@@ -24,11 +31,14 @@ public class Join extends Operator {
      */
     public Join(JoinPredicate p, OpIterator child1, OpIterator child2) {
         // TODO: some code goes here
+        pred = p;
+        children = new OpIterator[] {child1, child2};
+        td = TupleDesc.merge(children[0].getTupleDesc(), children[1].getTupleDesc());
     }
 
     public JoinPredicate getJoinPredicate() {
         // TODO: some code goes here
-        return null;
+        return pred;
     }
 
     /**
@@ -37,7 +47,7 @@ public class Join extends Operator {
      */
     public String getJoinField1Name() {
         // TODO: some code goes here
-        return null;
+        return children[0].getTupleDesc().getFieldName(pred.getField1());
     }
 
     /**
@@ -46,7 +56,7 @@ public class Join extends Operator {
      */
     public String getJoinField2Name() {
         // TODO: some code goes here
-        return null;
+        return children[1].getTupleDesc().getFieldName(pred.getField1());
     }
 
     /**
@@ -55,20 +65,31 @@ public class Join extends Operator {
      */
     public TupleDesc getTupleDesc() {
         // TODO: some code goes here
-        return null;
+        return td;
     }
 
     public void open() throws DbException, NoSuchElementException,
             TransactionAbortedException {
         // TODO: some code goes here
+        super.open();
+        children[0].open();
+        children[1].open();
     }
 
     public void close() {
         // TODO: some code goes here
+        super.close();
+        tuple1 = null;
+        children[0].close();
+        children[1].close();
     }
 
     public void rewind() throws DbException, TransactionAbortedException {
         // TODO: some code goes here
+        super.rewind();
+        tuple1 = null;
+        children[0].rewind();
+        children[1].rewind();
     }
 
     /**
@@ -91,18 +112,46 @@ public class Join extends Operator {
      */
     protected Tuple fetchNext() throws TransactionAbortedException, DbException {
         // TODO: some code goes here
-        return null;
+        if (tuple1 == null) {
+            if (!children[0].hasNext()) {
+                return null;
+            }
+            tuple1 = children[0].next();
+        }
+        while (children[1].hasNext()) {
+            Tuple tuple2 = children[1].next();
+            if (pred.filter(tuple1, tuple2)) {
+                Tuple t = new Tuple(td);
+                int k = 0;
+                Iterator<Field> it = tuple1.fields();
+                while (it.hasNext()) {
+                    t.setField(k++, it.next());
+                }
+                it = tuple2.fields();
+                while (it.hasNext()) {
+                    t.setField(k++, it.next());
+                }
+                return t;
+            }
+        }
+        tuple1 = null;
+        children[1].rewind();
+        return fetchNext();
     }
 
     @Override
     public OpIterator[] getChildren() {
         // TODO: some code goes here
-        return null;
+        return children;
     }
 
     @Override
-    public void setChildren(OpIterator[] children) {
+    public void setChildren(OpIterator[] children) throws IllegalArgumentException {
         // TODO: some code goes here
+        if (children == null || children.length != 2) {
+            throw new IllegalArgumentException();
+        }
+        this.children = children;
+        td = TupleDesc.merge(children[0].getTupleDesc(), children[1].getTupleDesc());
     }
-
 }
