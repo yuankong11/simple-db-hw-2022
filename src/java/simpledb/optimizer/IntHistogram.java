@@ -2,10 +2,16 @@ package simpledb.optimizer;
 
 import simpledb.execution.Predicate;
 
+import java.util.Arrays;
+
 /**
  * A class to represent a fixed-width histogram over a single integer-based field.
  */
 public class IntHistogram {
+
+    private final int[] counts; // [, )
+    private final int buckets, min, max, interval;
+    private int total;
 
     /**
      * Create a new IntHistogram.
@@ -25,6 +31,15 @@ public class IntHistogram {
      */
     public IntHistogram(int buckets, int min, int max) {
         // TODO: some code goes here
+        counts = new int[buckets];
+        this.buckets = buckets;
+        this.min = min;
+        this.max = max;
+        this.interval = (max + 1 - min + buckets - 1) / buckets;
+    }
+
+    private int indexOf(int v) {
+        return (v - min) / interval;
     }
 
     /**
@@ -34,6 +49,47 @@ public class IntHistogram {
      */
     public void addValue(int v) {
         // TODO: some code goes here
+        counts[indexOf(v)]++;
+        total++;
+    }
+
+    private double equalSelectivity(int v) {
+        if (v < min || v > max) {
+            return 0.0;
+        }
+        return ((double) counts[indexOf(v)]) / interval / total;
+    }
+
+    private double greaterSelectivity(int v) {
+        if (v < min) {
+            return 1.0;
+        }
+        if (v > max) {
+            return 0.0;
+        }
+        int i = indexOf(v), right = (i + 1) * min;
+        double d = ((double) counts[i]) * (right - v) / interval;
+        for (int j = i + 1; j < buckets; j++) {
+            d += counts[j];
+        }
+        d /= total;
+        return d;
+    }
+
+    private double lessSelectivity(int v) {
+        if (v < min) {
+            return 0.0;
+        }
+        if (v > max) {
+            return 1.0;
+        }
+        int i = indexOf(v), left = i * min;
+        double d = ((double) counts[i]) * (v - left) / interval;
+        for (int j = i - 1; j >= 0; j--) {
+            d += counts[j];
+        }
+        d /= total;
+        return d;
     }
 
     /**
@@ -47,9 +103,16 @@ public class IntHistogram {
      * @return Predicted selectivity of this particular operator and value
      */
     public double estimateSelectivity(Predicate.Op op, int v) {
-
         // TODO: some code goes here
-        return -1.0;
+        switch (op) {
+            case EQUALS: return equalSelectivity(v);
+            case NOT_EQUALS: return 1.0 - equalSelectivity(v);
+            case GREATER_THAN: return greaterSelectivity(v);
+            case GREATER_THAN_OR_EQ: return equalSelectivity(v) + greaterSelectivity(v);
+            case LESS_THAN: return lessSelectivity(v);
+            case LESS_THAN_OR_EQ: return lessSelectivity(v) + equalSelectivity(v);
+            default: return -1.0;
+        }
     }
 
     /**
@@ -67,8 +130,16 @@ public class IntHistogram {
     /**
      * @return A string describing this histogram, for debugging purposes
      */
+    @Override
     public String toString() {
         // TODO: some code goes here
-        return null;
+        return "IntHistogram{" +
+                "counts=" + Arrays.toString(counts) +
+                ", buckets=" + buckets +
+                ", min=" + min +
+                ", max=" + max +
+                ", interval=" + interval +
+                ", total=" + total +
+                '}';
     }
 }
