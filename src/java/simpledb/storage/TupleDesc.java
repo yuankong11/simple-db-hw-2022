@@ -48,7 +48,7 @@ public class TupleDesc implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final ArrayList<TDItem> items;
-    private HashMap<String, Integer> name;
+    private HashMap<String, Integer> names;
     private int size = 0;
 
     /**
@@ -78,11 +78,11 @@ public class TupleDesc implements Serializable {
             throw new IllegalArgumentException();
         }
         items = new ArrayList<>(typeAr.length);
-        name = new HashMap<>();
+        names = new HashMap<>();
         for (int i = 0; i < typeAr.length; i++) {
             if (fieldAr != null) {
                 items.add(new TDItem(typeAr[i], fieldAr[i]));
-                name.putIfAbsent(fieldAr[i], i);
+                names.putIfAbsent(fieldAr[i], i);
             } else {
                 items.add(new TDItem(typeAr[i], null));
             }
@@ -95,7 +95,7 @@ public class TupleDesc implements Serializable {
             throw new IllegalArgumentException();
         }
         this.items = new ArrayList<>(t.items);
-        this.name = new HashMap<>(t.name);
+        this.names = new HashMap<>(t.names);
         this.size = t.size;
     }
 
@@ -160,10 +160,10 @@ public class TupleDesc implements Serializable {
      */
     public int indexForFieldName(String name) throws NoSuchElementException {
         // TODO: some code goes here
-        if (!this.name.containsKey(name)) {
+        if (!names.containsKey(name)) {
             throw new NoSuchElementException();
         }
-        return this.name.get(name);
+        return names.get(name);
     }
 
     /**
@@ -194,7 +194,7 @@ public class TupleDesc implements Serializable {
             TDItem item = it2.next();
             td.items.add(item);
             if (item.fieldName != null) {
-                td.name.putIfAbsent(item.fieldName, td.items.size() - 1);
+                td.names.putIfAbsent(item.fieldName, td.items.size() - 1);
             }
             td.size += item.fieldType.getLen();
         }
@@ -216,8 +216,8 @@ public class TupleDesc implements Serializable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         TupleDesc td = (TupleDesc) o;
-        if (this.size == td.size && this.items.equals(td.items)) {
-            return this.name.equals(td.name);
+        if (size == td.size && items.equals(td.items)) {
+            return names.equals(td.names);
         } else {
             return false;
         }
@@ -240,7 +240,7 @@ public class TupleDesc implements Serializable {
     public String toString() {
         return "TupleDesc{" +
                 "items=" + items +
-                ", name=" + name +
+                ", names=" + names +
                 ", size=" + size +
                 '}';
     }

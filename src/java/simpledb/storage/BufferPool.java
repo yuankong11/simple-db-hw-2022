@@ -21,6 +21,30 @@ import java.util.concurrent.ConcurrentMap;
  * @Threadsafe, all fields are final
  */
 public class BufferPool {
+
+    static class LRUCache extends LinkedHashMap<PageId, Page> {
+        private final int cacheSize;
+
+        public LRUCache(int cacheSize) {
+            super(cacheSize, 0.75f, true);
+            this.cacheSize = cacheSize;
+        }
+
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<PageId, Page> e) {
+            boolean evict = size() > cacheSize;
+            if (evict) {
+                try {
+                    Database.getBufferPool().flushPage(e.getKey());
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                    evict = false;
+                }
+            }
+            return evict;
+        }
+    }
+
     /**
      * Bytes per page, including header.
      */
@@ -35,7 +59,7 @@ public class BufferPool {
      */
     public static final int DEFAULT_PAGES = 50;
 
-    private final ConcurrentHashMap<PageId, Page> pageMap;
+    private final LRUCache buffer;
 
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -44,7 +68,7 @@ public class BufferPool {
      */
     public BufferPool(int numPages) {
         // TODO: some code goes here
-        pageMap = new ConcurrentHashMap<>();
+        buffer = new LRUCache(numPages);
     }
 
     public static int getPageSize() {
@@ -79,8 +103,8 @@ public class BufferPool {
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
             throws TransactionAbortedException, DbException, IOException {
         // TODO: some code goes here
-        pageMap.putIfAbsent(pid, Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid));
-        return pageMap.get(pid);
+        buffer.putIfAbsent(pid, Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid));
+        return buffer.get(pid);
     }
 
     /**
@@ -131,7 +155,7 @@ public class BufferPool {
     private void markAndBuffer(List<Page> list, TransactionId tid) {
         for (Page page : list) {
             page.markDirty(true, tid);
-            pageMap.putIfAbsent(page.getId(), page);
+            buffer.putIfAbsent(page.getId(), page);
         }
     }
 
@@ -188,7 +212,9 @@ public class BufferPool {
     public synchronized void flushAllPages() throws IOException {
         // TODO: some code goes here
         // not necessary for lab1
-
+        for (Map.Entry<PageId, Page> e : buffer.entrySet()) {
+            flushPage(e.getKey());
+        }
     }
 
     /**
@@ -203,6 +229,7 @@ public class BufferPool {
     public synchronized void removePage(PageId pid) {
         // TODO: some code goes here
         // not necessary for lab1
+        buffer.remove(pid);
     }
 
     /**
@@ -213,6 +240,14 @@ public class BufferPool {
     private synchronized void flushPage(PageId pid) throws IOException {
         // TODO: some code goes here
         // not necessary for lab1
+        if (!buffer.containsKey(pid)) {
+            return;
+        }
+        Page page = buffer.get(pid);
+        if (page.isDirty() != null) {
+            Database.getCatalog().getDatabaseFile(pid.getTableId()).writePage(page);
+            page.markDirty(false, null);
+        }
     }
 
     /**
@@ -231,5 +266,4 @@ public class BufferPool {
         // TODO: some code goes here
         // not necessary for lab1
     }
-
 }

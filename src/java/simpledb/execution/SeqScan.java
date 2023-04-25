@@ -100,6 +100,11 @@ public class SeqScan implements OpIterator {
         public String getFieldName(int i) throws NoSuchElementException {
             return prefix + "." + super.getFieldName(i);
         }
+
+        @Override
+        public int indexForFieldName(String name) throws NoSuchElementException {
+            return super.indexForFieldName(name.substring(prefix.length() + 1));
+        }
     }
 
     /**
