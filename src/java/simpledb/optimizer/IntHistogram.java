@@ -7,7 +7,7 @@ import java.util.Arrays;
 /**
  * A class to represent a fixed-width histogram over a single integer-based field.
  */
-public class IntHistogram {
+public class IntHistogram implements Histogram<Integer> {
 
     private final int[] counts; // [, )
     private final int buckets, min, max, interval;
@@ -35,7 +35,7 @@ public class IntHistogram {
         this.buckets = buckets;
         this.min = min;
         this.max = max;
-        this.interval = (max + 1 - min + buckets - 1) / buckets;
+        this.interval = (max - min + 1 + buckets - 1) / buckets;
     }
 
     private int indexOf(int v) {
@@ -47,9 +47,11 @@ public class IntHistogram {
      *
      * @param v Value to add to the histogram
      */
-    public void addValue(int v) {
+    public void addValue(Integer v) {
         // TODO: some code goes here
-        counts[indexOf(v)]++;
+        if (v >= min && v <= max) {
+            counts[indexOf(v)]++;
+        }
         total++;
     }
 
@@ -67,8 +69,8 @@ public class IntHistogram {
         if (v > max) {
             return 0.0;
         }
-        int i = indexOf(v), right = (i + 1) * min;
-        double d = ((double) counts[i]) * (right - v) / interval;
+        int i = indexOf(v), right = (i + 1) * interval;
+        double d = ((double) counts[i]) * (right - v - 1) / interval;
         for (int j = i + 1; j < buckets; j++) {
             d += counts[j];
         }
@@ -83,7 +85,7 @@ public class IntHistogram {
         if (v > max) {
             return 1.0;
         }
-        int i = indexOf(v), left = i * min;
+        int i = indexOf(v), left = i * interval;
         double d = ((double) counts[i]) * (v - left) / interval;
         for (int j = i - 1; j >= 0; j--) {
             d += counts[j];
@@ -102,7 +104,7 @@ public class IntHistogram {
      * @param v  Value
      * @return Predicted selectivity of this particular operator and value
      */
-    public double estimateSelectivity(Predicate.Op op, int v) {
+    public double estimateSelectivity(Predicate.Op op, Integer v) {
         // TODO: some code goes here
         switch (op) {
             case EQUALS: return equalSelectivity(v);
@@ -124,7 +126,7 @@ public class IntHistogram {
      */
     public double avgSelectivity() {
         // TODO: some code goes here
-        return 1.0;
+        return 1.0 / Math.min(total, (max - min + 1));
     }
 
     /**
