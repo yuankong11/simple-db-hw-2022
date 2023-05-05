@@ -1,0 +1,2 @@
+lab1 (f1 int, f2 int, f3 int)
+lab2 (f1 int, f2 int)

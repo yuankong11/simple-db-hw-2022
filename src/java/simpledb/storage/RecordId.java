@@ -1,6 +1,7 @@
 package simpledb.storage;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * A RecordId is a reference to a specific tuple on a specific page of a
@@ -9,6 +10,9 @@ import java.io.Serializable;
 public class RecordId implements Serializable {
 
     private static final long serialVersionUID = 1L;
+
+    private final PageId pageID;
+    private final int tupleNumber;
 
     /**
      * Creates a new RecordId referring to the specified PageId and tuple
@@ -19,6 +23,8 @@ public class RecordId implements Serializable {
      */
     public RecordId(PageId pid, int tupleno) {
         // TODO: some code goes here
+        pageID = pid;
+        tupleNumber = tupleno;
     }
 
     /**
@@ -26,7 +32,7 @@ public class RecordId implements Serializable {
      */
     public int getTupleNumber() {
         // TODO: some code goes here
-        return 0;
+        return tupleNumber;
     }
 
     /**
@@ -34,7 +40,7 @@ public class RecordId implements Serializable {
      */
     public PageId getPageId() {
         // TODO: some code goes here
-        return null;
+        return pageID;
     }
 
     /**
@@ -46,7 +52,10 @@ public class RecordId implements Serializable {
     @Override
     public boolean equals(Object o) {
         // TODO: some code goes here
-        throw new UnsupportedOperationException("implement this");
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        RecordId recordId = (RecordId) o;
+        return tupleNumber == recordId.tupleNumber && Objects.equals(pageID, recordId.pageID);
     }
 
     /**
@@ -58,8 +67,6 @@ public class RecordId implements Serializable {
     @Override
     public int hashCode() {
         // TODO: some code goes here
-        throw new UnsupportedOperationException("implement this");
-
+        return Objects.hash(pageID, tupleNumber);
     }
-
 }

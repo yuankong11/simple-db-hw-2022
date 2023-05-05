@@ -6,6 +6,7 @@ import java.util.Objects;
  * Unique identifier for HeapPage objects.
  */
 public class HeapPageId implements PageId {
+    int tableID, pageNumber;
 
     /**
      * Constructor. Create a page id structure for a specific page of a
@@ -16,6 +17,13 @@ public class HeapPageId implements PageId {
      */
     public HeapPageId(int tableId, int pgNo) {
         // TODO: some code goes here
+        tableID = tableId;
+        pageNumber = pgNo;
+    }
+
+    public HeapPageId(PageId id) {
+        tableID = id.getTableId();
+        pageNumber = id.getPageNumber();
     }
 
     /**
@@ -23,7 +31,7 @@ public class HeapPageId implements PageId {
      */
     public int getTableId() {
         // TODO: some code goes here
-        return 0;
+        return tableID;
     }
 
     /**
@@ -32,7 +40,7 @@ public class HeapPageId implements PageId {
      */
     public int getPageNumber() {
         // TODO: some code goes here
-        return 0;
+        return pageNumber;
     }
 
     /**
@@ -41,9 +49,10 @@ public class HeapPageId implements PageId {
      *         key in a hash table in the BufferPool, for example.)
      * @see BufferPool
      */
+    @Override
     public int hashCode() {
         // TODO: some code goes here
-        throw new UnsupportedOperationException("implement this");
+        return Objects.hash(tableID, pageNumber);
     }
 
     /**
@@ -53,9 +62,13 @@ public class HeapPageId implements PageId {
      * @return true if the objects are equal (e.g., page numbers and table
      *         ids are the same)
      */
+    @Override
     public boolean equals(Object o) {
         // TODO: some code goes here
-        return false;
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        HeapPageId that = (HeapPageId) o;
+        return tableID == that.tableID && pageNumber == that.pageNumber;
     }
 
     /**
@@ -73,4 +86,11 @@ public class HeapPageId implements PageId {
         return data;
     }
 
+    @Override
+    public String toString() {
+        return "HeapPageId{" +
+                "tableID=" + tableID +
+                ", pageNumber=" + pageNumber +
+                '}';
+    }
 }
