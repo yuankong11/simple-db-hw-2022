@@ -170,7 +170,7 @@ public class JoinOptimizer {
      * @param size The size of the subsets of interest
      * @return a set of all subsets of the specified size
      */
-    public <T> Set<Set<T>> enumerateSubsets(List<T> v, int size) {
+    public static <T> Set<Set<T>> enumerateSubsetsOld(List<T> v, int size) {
         Set<Set<T>> els = new HashSet<>();
         els.add(new HashSet<>());
         // Iterator<Set> it;
@@ -190,6 +190,29 @@ public class JoinOptimizer {
 
         return els;
 
+    }
+
+    public static <T> void enumerateSubsetsOptSub(List<T> v, int size, Set<T> current, int i, Set<Set<T>> result) {
+        if (current.size() == size) {
+            result.add(new HashSet<>(current));
+            return;
+        }
+        if (i == v.size()) {
+            return;
+        }
+        T t = v.get(i);
+        if (!current.contains(t)) {
+            current.add(t);
+            enumerateSubsetsOptSub(v, size, current, i+1, result);
+            current.remove(t);
+        }
+        enumerateSubsetsOptSub(v, size, current, i+1, result);
+    }
+
+    public static <T> Set<Set<T>> enumerateSubsets(List<T> v, int size) {
+        Set<Set<T>> result = new HashSet<>();
+        enumerateSubsetsOptSub(v, size, new HashSet<>(), 0, result);
+        return result;
     }
 
     /**
