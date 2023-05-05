@@ -56,7 +56,7 @@ public class Join extends Operator {
      */
     public String getJoinField2Name() {
         // TODO: some code goes here
-        return children[1].getTupleDesc().getFieldName(pred.getField1());
+        return children[1].getTupleDesc().getFieldName(pred.getField2());
     }
 
     /**

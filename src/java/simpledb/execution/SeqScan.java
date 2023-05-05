@@ -9,6 +9,7 @@ import simpledb.storage.TupleDesc;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
 
+import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 /**
@@ -88,23 +89,19 @@ public class SeqScan implements OpIterator {
         it.open();
     }
 
-    static class TupleDescWithPrefix extends TupleDesc {
-        private final String prefix;
-
-        public TupleDescWithPrefix(TupleDesc t, String prefix) {
-            super(t);
-            this.prefix = prefix;
+    private TupleDesc newTupleDescWithPrefix(TupleDesc t, String prefix) {
+        Iterator<TupleDesc.TDItem> it = t.iterator();
+        int size = t.numFields();
+        Type[] types = new Type[size];
+        String[] names = new String[size];
+        int index = 0;
+        while (it.hasNext()) {
+            TupleDesc.TDItem item = it.next();
+            types[index] = item.fieldType;
+            names[index] = prefix + "." + item.fieldName;
+            index++;
         }
-
-        @Override
-        public String getFieldName(int i) throws NoSuchElementException {
-            return prefix + "." + super.getFieldName(i);
-        }
-
-        @Override
-        public int indexForFieldName(String name) throws NoSuchElementException {
-            return super.indexForFieldName(name.substring(prefix.length() + 1));
-        }
+        return new TupleDesc(types, names);
     }
 
     /**
@@ -120,7 +117,7 @@ public class SeqScan implements OpIterator {
     public TupleDesc getTupleDesc() throws NoSuchElementException {
         // TODO: some code goes here
         TupleDesc td = Database.getCatalog().getTupleDesc(tableID);
-        return new TupleDescWithPrefix(td, tableAlias);
+        return newTupleDescWithPrefix(td, tableAlias);
     }
 
     public boolean hasNext() throws TransactionAbortedException, DbException {

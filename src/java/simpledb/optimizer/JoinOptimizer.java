@@ -213,9 +213,26 @@ public class JoinOptimizer {
             Map<String, Double> filterSelectivities, boolean explain)
             throws ParsingException {
         // Not necessary for labs 1 and 2.
-
         // TODO: some code goes here
-        return joins;
+        PlanCache pc = new PlanCache();
+        for (int i = 1; i <= joins.size(); i++) {
+            Set<Set<LogicalJoinNode>> subsets = enumerateSubsets(joins, i);
+            for (Set<LogicalJoinNode> subset : subsets) {
+                CostCard opt = null;
+                for (LogicalJoinNode e : subset) {
+                    CostCard cc = computeCostAndCardOfSubplan(stats, filterSelectivities, e,
+                                                              subset, opt == null ? Double.MAX_VALUE : opt.cost, pc);
+                    if (cc != null) {
+                        opt = cc;
+                    }
+                }
+                if (opt != null) {
+                    pc.addPlan(subset, opt.cost, opt.card, opt.plan);
+                }
+            }
+        }
+        List<LogicalJoinNode> opt = pc.getOrder(new HashSet<>(joins));
+        return opt == null ? joins : opt;
     }
 
     // ===================== Private Methods =================================
