@@ -82,7 +82,7 @@ public class TupleDesc implements Serializable {
         for (int i = 0; i < typeAr.length; i++) {
             if (fieldAr != null) {
                 items.add(new TDItem(typeAr[i], fieldAr[i]));
-                names.putIfAbsent(fieldAr[i], i);
+                names.put(fieldAr[i], i);
             } else {
                 items.add(new TDItem(typeAr[i], null));
             }
@@ -194,7 +194,7 @@ public class TupleDesc implements Serializable {
             TDItem item = it2.next();
             td.items.add(item);
             if (item.fieldName != null) {
-                td.names.putIfAbsent(item.fieldName, td.items.size() - 1);
+                td.names.put(item.fieldName, td.items.size() - 1);
             }
             td.size += item.fieldType.getLen();
         }

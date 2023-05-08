@@ -81,14 +81,15 @@ public class LockManager {
     ConcurrentHashMap<TransactionId, HashSet<PageId>> holds = new ConcurrentHashMap<>();
 
     private void addHold(TransactionId tid, PageId pid) {
-        holds.putIfAbsent(tid, new HashSet<>());
+        holds.computeIfAbsent(tid, k -> new HashSet<>());
         synchronized (holds.get(tid)) {
             holds.get(tid).add(pid);
         }
     }
 
     private void putIfAbsent(PageId pid) {
-        locks.putIfAbsent(pid, new ReadWriteLock<>());
+        // use computeIfAbsent to avoid needless object creation
+        locks.computeIfAbsent(pid, k -> new ReadWriteLock<>());
     }
 
     public void acquireReadLock(PageId pid, TransactionId tid) {

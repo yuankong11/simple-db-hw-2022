@@ -139,7 +139,11 @@ public class Aggregate extends Operator {
      */
     protected Tuple fetchNext() throws TransactionAbortedException, DbException {
         // TODO: some code goes here
-        return it.next();
+        try {
+            return it.next();
+        } catch (NoSuchElementException e) {
+            return null;
+        }
     }
 
     public void rewind() throws DbException, TransactionAbortedException {

@@ -113,7 +113,6 @@ public class HeapFile implements DbFile {
         randomAccessFile.seek(offset);
         randomAccessFile.write(page.getPageData());
         randomAccessFile.close();
-        numPages = Math.max(numPages, (int) (file.length() / BufferPool.getPageSize()));
     }
 
     /**
@@ -121,7 +120,7 @@ public class HeapFile implements DbFile {
      */
     public int numPages() {
         // TODO: some code goes here
-        return numPages;
+        return Math.max(numPages, (int) (file.length() / BufferPool.getPageSize()));
     }
 
     // see DbFile.java for javadocs
@@ -137,9 +136,7 @@ public class HeapFile implements DbFile {
             HeapPage page = (HeapPage) bp.getPage(tid, pid, perf);
             try {
                 page.insertTuple(t);
-                ArrayList<Page> result = new ArrayList<>();
-                result.add(page);
-                return result;
+                return List.of(page);
             } catch (DbException ignored) {
                 bp.unsafeReleasePage(tid, pid);
             }
@@ -156,9 +153,7 @@ public class HeapFile implements DbFile {
         Permissions perf = Permissions.READ_WRITE;
         HeapPage page = (HeapPage) bp.getPage(tid, t.getRecordId().getPageId(), perf);
         page.deleteTuple(t);
-        ArrayList<Page> result = new ArrayList<>();
-        result.add(page);
-        return result;
+        return List.of(page);
     }
 
     // see DbFile.java for javadocs

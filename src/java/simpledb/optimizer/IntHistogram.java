@@ -69,7 +69,7 @@ public class IntHistogram implements Histogram<Integer> {
         if (v > max) {
             return 0.0;
         }
-        int i = indexOf(v), right = (i + 1) * interval;
+        int i = indexOf(v), right = (i + 1) * interval + min;
         double d = ((double) counts[i]) * (right - v - 1) / interval;
         for (int j = i + 1; j < buckets; j++) {
             d += counts[j];
@@ -85,7 +85,7 @@ public class IntHistogram implements Histogram<Integer> {
         if (v > max) {
             return 1.0;
         }
-        int i = indexOf(v), left = i * interval;
+        int i = indexOf(v), left = i * interval + min;
         double d = ((double) counts[i]) * (v - left) / interval;
         for (int j = i - 1; j >= 0; j--) {
             d += counts[j];

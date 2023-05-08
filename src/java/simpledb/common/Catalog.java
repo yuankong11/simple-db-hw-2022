@@ -88,7 +88,7 @@ public class Catalog {
     }
 
     private void ensureTableExist(String name) throws NoSuchElementException {
-        if (!ids.containsKey(name)) {
+        if (name == null || !ids.containsKey(name)) {
             throw new NoSuchElementException();
         }
     }

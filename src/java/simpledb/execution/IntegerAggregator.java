@@ -97,7 +97,7 @@ public class IntegerAggregator implements Aggregator {
             @Override
             public Tuple next() throws DbException, TransactionAbortedException, NoSuchElementException {
                 if (!hasNext()) {
-                    return null;
+                    throw new NoSuchElementException();
                 }
                 Tuple tuple = new Tuple(td);
                 Map.Entry<Field, int[]> entry = it.next();
