@@ -78,6 +78,14 @@ class ReadWriteLock<O> {
 
 public class LockManager {
     ConcurrentHashMap<PageId, ReadWriteLock<TransactionId>> locks = new ConcurrentHashMap<>();
+    ConcurrentHashMap<TransactionId, HashSet<PageId>> holds = new ConcurrentHashMap<>();
+
+    private void addHold(TransactionId tid, PageId pid) {
+        holds.putIfAbsent(tid, new HashSet<>());
+        synchronized (holds.get(tid)) {
+            holds.get(tid).add(pid);
+        }
+    }
 
     private void putIfAbsent(PageId pid) {
         locks.putIfAbsent(pid, new ReadWriteLock<>());
@@ -86,11 +94,13 @@ public class LockManager {
     public void acquireReadLock(PageId pid, TransactionId tid) {
         putIfAbsent(pid);
         locks.get(pid).readLock(tid);
+        addHold(tid, pid);
     }
 
     public void acquireWriteLock(PageId pid, TransactionId tid) {
         putIfAbsent(pid);
         locks.get(pid).writeLock(tid);
+        addHold(tid, pid);
     }
 
     public void acquireLock(PageId pid, TransactionId tid, Permissions perm) {
@@ -112,5 +122,14 @@ public class LockManager {
             return locks.get(pid).holdLock(tid);
         }
         return false;
+    }
+
+    public void releaseAll(TransactionId tid) {
+        if (holds.containsKey(tid)) {
+            synchronized (holds.get(tid)) {
+                holds.get(tid).forEach(pid -> releaseLock(pid, tid));
+                holds.get(tid).clear();
+            }
+        }
     }
 }

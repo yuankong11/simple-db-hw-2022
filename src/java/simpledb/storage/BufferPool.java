@@ -133,6 +133,7 @@ public class BufferPool {
     public void transactionComplete(TransactionId tid) {
         // TODO: some code goes here
         // not necessary for lab1|lab2
+        lockManager.releaseAll(tid);
     }
 
     /**
@@ -154,6 +155,7 @@ public class BufferPool {
     public void transactionComplete(TransactionId tid, boolean commit) {
         // TODO: some code goes here
         // not necessary for lab1|lab2
+        transactionComplete(tid);
     }
 
     private void markAndBuffer(List<Page> list, TransactionId tid) {

@@ -23,6 +23,7 @@ import java.util.*;
 public class HeapFile implements DbFile {
     File file;
     TupleDesc td;
+    int numPages;
 
     /**
      * Constructs a heap file backed by the specified file.
@@ -34,6 +35,7 @@ public class HeapFile implements DbFile {
         // TODO: some code goes here
         file = f;
         this.td = td;
+        numPages = (int) (file.length() / BufferPool.getPageSize());
     }
 
     /**
@@ -74,8 +76,18 @@ public class HeapFile implements DbFile {
     // see DbFile.java for javadocs
     public Page readPage(PageId pid) throws IllegalArgumentException {
         // TODO: some code goes here
-        if (pid.getTableId() != getId() || pid.getPageNumber() >= numPages()) {
+        if (pid.getTableId() != getId()) {
             throw new IllegalArgumentException();
+        }
+        if (pid.getPageNumber() >= numPages()) {
+            try {
+                HeapPage page = new HeapPage(new HeapPageId(pid), new byte[BufferPool.getPageSize()]);
+                numPages = pid.getPageNumber() + 1;
+                return page;
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
+            }
         }
         try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
             int number = pid.getPageNumber(), size = BufferPool.getPageSize();
@@ -101,6 +113,7 @@ public class HeapFile implements DbFile {
         randomAccessFile.seek(offset);
         randomAccessFile.write(page.getPageData());
         randomAccessFile.close();
+        numPages = Math.max(numPages, (int) (file.length() / BufferPool.getPageSize()));
     }
 
     /**
@@ -108,21 +121,7 @@ public class HeapFile implements DbFile {
      */
     public int numPages() {
         // TODO: some code goes here
-        return (int) (file.length() / BufferPool.getPageSize());
-    }
-
-    private List<Page> insertTupleIntoNewPage(TransactionId tid, Tuple t)
-            throws DbException, IOException, TransactionAbortedException {
-        BufferPool bp = Database.getBufferPool();
-        Permissions perf = Permissions.READ_WRITE;
-        HeapPageId pid = new HeapPageId(getId(), numPages());
-        HeapPage page = new HeapPage(pid, new byte[BufferPool.getPageSize()]);
-        writePage(page);
-        page = (HeapPage) bp.getPage(tid, pid, perf);
-        page.insertTuple(t);
-        ArrayList<Page> result = new ArrayList<>();
-        result.add(page);
-        return result;
+        return numPages;
     }
 
     // see DbFile.java for javadocs
@@ -132,7 +131,8 @@ public class HeapFile implements DbFile {
         // not necessary for lab1
         BufferPool bp = Database.getBufferPool();
         Permissions perf = Permissions.READ_WRITE;
-        for (int i = 0; i < numPages(); i++) {
+        int i = 0;
+        while (true) {
             PageId pid = new HeapPageId(getId(), i);
             HeapPage page = (HeapPage) bp.getPage(tid, pid, perf);
             try {
@@ -141,9 +141,10 @@ public class HeapFile implements DbFile {
                 result.add(page);
                 return result;
             } catch (DbException ignored) {
+                bp.unsafeReleasePage(tid, pid);
             }
+            i++;
         }
-        return insertTupleIntoNewPage(tid, t);
     }
 
     // see DbFile.java for javadocs
