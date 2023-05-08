@@ -60,6 +60,7 @@ public class BufferPool {
     public static final int DEFAULT_PAGES = 50;
 
     private final LRUCache buffer;
+    private final LockManager lockManager;
 
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -69,6 +70,7 @@ public class BufferPool {
     public BufferPool(int numPages) {
         // TODO: some code goes here
         buffer = new LRUCache(numPages);
+        lockManager = new LockManager();
     }
 
     public static int getPageSize() {
@@ -103,6 +105,7 @@ public class BufferPool {
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
             throws TransactionAbortedException, DbException, IOException {
         // TODO: some code goes here
+        lockManager.acquireLock(pid, tid, perm);
         buffer.putIfAbsent(pid, Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid));
         return buffer.get(pid);
     }
@@ -119,6 +122,7 @@ public class BufferPool {
     public void unsafeReleasePage(TransactionId tid, PageId pid) {
         // TODO: some code goes here
         // not necessary for lab1|lab2
+        lockManager.releaseLock(pid, tid);
     }
 
     /**
@@ -137,7 +141,7 @@ public class BufferPool {
     public boolean holdsLock(TransactionId tid, PageId p) {
         // TODO: some code goes here
         // not necessary for lab1|lab2
-        return false;
+        return lockManager.holdLock(p, tid);
     }
 
     /**
@@ -213,7 +217,7 @@ public class BufferPool {
         // TODO: some code goes here
         // not necessary for lab1
         for (Map.Entry<PageId, Page> e : buffer.entrySet()) {
-            flushPage(e.getKey());
+            flushPage(e.getKey(), e.getValue());
         }
     }
 
@@ -244,6 +248,10 @@ public class BufferPool {
             return;
         }
         Page page = buffer.get(pid);
+        flushPage(pid, page);
+    }
+
+    private synchronized void flushPage(PageId pid, Page page) throws IOException {
         if (page.isDirty() != null) {
             Database.getCatalog().getDatabaseFile(pid.getTableId()).writePage(page);
             page.markDirty(false, null);
