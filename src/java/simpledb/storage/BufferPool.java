@@ -88,7 +88,12 @@ public class BufferPool {
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
             throws TransactionAbortedException, DbException, IOException {
         // TODO: some code goes here
-        lockManager.acquireLock(pid, tid, perm);
+        try {
+            lockManager.acquireLock(pid, tid, perm);
+        } catch (DeadlockException e) {
+            String msg = tid.getId() + ":" + Database.getCatalog().getTableName(pid.getTableId()) + ":" + pid.getPageNumber();
+            throw new TransactionAbortedException(msg);
+        }
         addHold(tid, pid);
         if (!buffer.containsKey(pid)) {
             try {
@@ -135,14 +140,16 @@ public class BufferPool {
     public void transactionComplete(TransactionId tid) {
         // TODO: some code goes here
         // not necessary for lab1|lab2
-        synchronized (holds.get(tid)) {
-            try {
-                flushPages(tid);
-            } catch (IOException e) {
-                e.printStackTrace();
+        if (holds.containsKey(tid)) {
+            synchronized (holds.get(tid)) {
+                try {
+                    flushPages(tid);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                releaseAllLock(tid);
+                holds.get(tid).clear();
             }
-            releaseAllLock(tid);
-            holds.get(tid).clear();
         }
     }
 

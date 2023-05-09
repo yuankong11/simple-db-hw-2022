@@ -4,9 +4,12 @@ import simpledb.common.Permissions;
 import simpledb.transaction.TransactionId;
 
 import java.util.HashSet;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 class ReadWriteLock<O> {
+    public static final CycleDetection cycle = new CycleDetection();
+
     enum LockState {
         SHARED, EXCLUSIVE
     }
@@ -14,42 +17,50 @@ class ReadWriteLock<O> {
     LockState state = LockState.SHARED;
     HashSet<O> owners = new HashSet<>();
 
-    private void waitNoEx() {
+    private void wait(O o) throws DeadlockException {
         try {
+            cycle.addEdge(o, this);
+            HashSet<Object> path = cycle.getCycle();
+            if (!path.isEmpty()) {
+                throw new DeadlockException(path);
+            }
             wait();
+            cycle.removeEdge(o, this);
         } catch (InterruptedException ignored) {
         }
     }
 
-    public void readLock(O owner) {
+    public void readLock(O owner) throws DeadlockException {
         synchronized (this) {
             while (true) {
                 if (owners.contains(owner)) {
-                    return;
+                    break;
                 }
                 if (state == LockState.SHARED) {
                     owners.add(owner);
-                    return;
+                    break;
                 }
-                waitNoEx();
+                wait(owner);
             }
+            cycle.addEdge(this, owner);
         }
     }
 
-    public void writeLock(O owner) {
+    public void writeLock(O owner) throws DeadlockException {
         synchronized (this) {
             while (true) {
                 if (owners.isEmpty()) {
                     state = LockState.EXCLUSIVE;
                     owners.add(owner);
-                    return;
+                    break;
                 }
                 if (owners.size() == 1 && owners.contains(owner)) {
                     state = LockState.EXCLUSIVE;
-                    return;
+                    break;
                 }
-                waitNoEx();
+                wait(owner);
             }
+            cycle.addEdge(this, owner);
         }
     }
 
@@ -57,6 +68,7 @@ class ReadWriteLock<O> {
         synchronized (this) {
             if (owners.contains(owner)) {
                 owners.remove(owner);
+                cycle.removeEdge(this, owner);
                 if (state == LockState.EXCLUSIVE) {
                     state = LockState.SHARED;
                     notify();
@@ -84,21 +96,46 @@ public class LockManager {
         locks.computeIfAbsent(pid, k -> new ReadWriteLock<>());
     }
 
-    public void acquireReadLock(PageId pid, TransactionId tid) {
+    public void acquireReadLock(PageId pid, TransactionId tid) throws DeadlockException {
         putIfAbsent(pid);
         locks.get(pid).readLock(tid);
     }
 
-    public void acquireWriteLock(PageId pid, TransactionId tid) {
+    public void acquireWriteLock(PageId pid, TransactionId tid) throws DeadlockException {
         putIfAbsent(pid);
         locks.get(pid).writeLock(tid);
     }
 
-    public void acquireLock(PageId pid, TransactionId tid, Permissions perm) {
+    public void acquireLockOnce(PageId pid, TransactionId tid, Permissions perm) throws DeadlockException {
         if (perm == Permissions.READ_ONLY) {
             acquireReadLock(pid, tid);
         } else {
             acquireWriteLock(pid, tid);
+        }
+    }
+
+    private boolean inDeadlock(HashSet<Object> path, TransactionId tid) {
+        for (Object o : path) {
+            if (tid.equals(o)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void acquireLock(PageId pid, TransactionId tid, Permissions perm) throws DeadlockException {
+        try {
+            acquireLockOnce(pid, tid, perm);
+        } catch (DeadlockException e) {
+            // sleep and try again, maybe one will win, avoid retry all tx
+            if (inDeadlock(e.path, tid)) {
+                long avoid = new Random().nextInt(500);
+                try {
+                    Thread.sleep(avoid);
+                } catch (InterruptedException ignored) {
+                }
+            }
+            acquireLockOnce(pid, tid, perm);
         }
     }
 

@@ -2,3 +2,5 @@
 out/
 *.iml
 log
+bin
+dist

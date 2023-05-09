@@ -166,16 +166,16 @@ public class HeapFile implements DbFile {
             final BufferPool bp = Database.getBufferPool();
             final Permissions perm = Permissions.READ_ONLY;
 
-            private Iterator<Tuple> getIterator() {
+            private Iterator<Tuple> getIterator() throws DbException, TransactionAbortedException {
                 try {
                     HeapPage page = (HeapPage) bp.getPage(tid, new HeapPageId(getId(), pageNumber++), perm);
                     return page.iterator();
-                } catch (Exception e) {
+                } catch (IOException e) {
                     return null;
                 }
             }
 
-            private void updateIterator() {
+            private void updateIterator() throws DbException, TransactionAbortedException {
                 while (pageNumber < totalPage && (it == null || !it.hasNext())) {
                     it = getIterator();
                 }
