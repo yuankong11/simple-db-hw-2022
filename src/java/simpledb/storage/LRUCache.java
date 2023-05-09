@@ -183,17 +183,27 @@ public class LRUCache<K, V> {
         }
     }
 
-    public synchronized void put(K key, V value) {
+    public synchronized K put(K key, V value) throws IllegalStateException {
         if (nodes.containsKey(key)) {
             nodes.get(key).val.v = value;
             list.moveToFirst(nodes.get(key));
+            return null;
         } else {
+            K removed = null;
+            boolean failed = false;
             if (size == capacity) {
-                evict();
+                removed = evict();
+                if (removed == null) {
+                    failed = true;
+                }
             }
             LRUNode<Pair<K, V>> node = list.addFirst(new Pair<>(key, value));
             nodes.put(key, node);
             size++;
+            if (failed) {
+                throw new IllegalStateException("can not evict");
+            }
+            return removed;
         }
     }
 
@@ -223,7 +233,7 @@ public class LRUCache<K, V> {
         }
     }
 
-    public synchronized void evict() {
+    public synchronized K evict() {
         Iterator<Pair<K, V>> it = list.iteratorFromLast();
         K removed = null;
         while (it.hasNext()) {
@@ -236,5 +246,6 @@ public class LRUCache<K, V> {
         if (removed != null) {
             remove(removed);
         }
+        return removed;
     }
 }
