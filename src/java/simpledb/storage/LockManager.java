@@ -8,21 +8,25 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 class ReadWriteLock<O> {
-    public static final CycleDetection cycle = new CycleDetection();
-
     enum LockState {
         SHARED, EXCLUSIVE
     }
 
-    LockState state = LockState.SHARED;
-    HashSet<O> owners = new HashSet<>();
+    private LockState state = LockState.SHARED;
+    private final HashSet<O> owners = new HashSet<>();
+    private final Object locked;
+    private final CycleDetection cycle;
+
+    public ReadWriteLock(Object locked, CycleDetection cycle) {
+        this.locked = locked;
+        this.cycle = cycle;
+    }
 
     private void wait(O o) throws DeadlockException {
         try {
-            cycle.addEdge(o, this);
-            HashSet<Object> path = cycle.getCycle();
-            if (!path.isEmpty()) {
-                throw new DeadlockException(path);
+            if (cycle.addEdge(o, this)) {
+                cycle.removeEdge(o, this);
+                throw new DeadlockException();
             }
             wait();
             cycle.removeEdge(o, this);
@@ -86,14 +90,20 @@ class ReadWriteLock<O> {
             return owners.contains(owner);
         }
     }
+
+    @Override
+    public String toString() {
+        return "Lock{" + state + ", " + owners + ", " + locked + '}';
+    }
 }
 
 public class LockManager {
-    ConcurrentHashMap<PageId, ReadWriteLock<TransactionId>> locks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<PageId, ReadWriteLock<TransactionId>> locks = new ConcurrentHashMap<>();
+    private final CycleDetection cycleDetection = new CycleDetection();
 
     private void putIfAbsent(PageId pid) {
         // use computeIfAbsent to avoid needless object creation
-        locks.computeIfAbsent(pid, k -> new ReadWriteLock<>());
+        locks.computeIfAbsent(pid, k -> new ReadWriteLock<>(pid, cycleDetection));
     }
 
     public void acquireReadLock(PageId pid, TransactionId tid) throws DeadlockException {
@@ -114,26 +124,15 @@ public class LockManager {
         }
     }
 
-    private boolean inDeadlock(HashSet<Object> path, TransactionId tid) {
-        for (Object o : path) {
-            if (tid.equals(o)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public void acquireLock(PageId pid, TransactionId tid, Permissions perm) throws DeadlockException {
         try {
             acquireLockOnce(pid, tid, perm);
         } catch (DeadlockException e) {
             // sleep and try again, maybe one will win, avoid retry all tx
-            if (inDeadlock(e.path, tid)) {
-                long avoid = new Random().nextInt(500);
-                try {
-                    Thread.sleep(avoid);
-                } catch (InterruptedException ignored) {
-                }
+            long avoid = new Random().nextInt(500);
+            try {
+                Thread.sleep(avoid);
+            } catch (InterruptedException ignored) {
             }
             acquireLockOnce(pid, tid, perm);
         }

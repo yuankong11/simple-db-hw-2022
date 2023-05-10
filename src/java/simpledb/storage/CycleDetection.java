@@ -1,13 +1,15 @@
 package simpledb.storage;
 
+import simpledb.common.Log;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Objects;
 
 class GraphNode {
-    Object value;
-    int count;
-    HashSet<GraphNode> next = new HashSet<>();
+    final Object value;
+    final HashSet<GraphNode> next = new HashSet<>();
+    int count; // edge count
 
     public GraphNode(Object value) {
         this.value = value;
@@ -33,7 +35,7 @@ class GraphNode {
 }
 
 public class CycleDetection {
-    HashMap<Object, GraphNode> nodes = new HashMap<>();
+    private final HashMap<Object, GraphNode> nodes = new HashMap<>();
 
     public synchronized GraphNode getNode(Object value) {
         if (nodes.containsKey(value)) {
@@ -44,14 +46,18 @@ public class CycleDetection {
         return node;
     }
 
-    public synchronized void addEdge(Object src, Object dst) {
-        addEdge(getNode(src), getNode(dst));
+    public synchronized boolean addEdge(Object src, Object dst) {
+        return addEdge(getNode(src), getNode(dst));
     }
 
-    public synchronized void addEdge(GraphNode src, GraphNode dst) {
-        src.next.add(dst);
-        src.count++;
-        dst.count++;
+    public synchronized boolean addEdge(GraphNode src, GraphNode dst) {
+        if (src.next.add(dst)) {
+            src.count++;
+            dst.count++;
+        }
+        boolean hasCycle = hasCycle(src);
+        Log.debug("addEdge: %s(%d) --> %s(%d), %b", src, src.count, dst, dst.count, hasCycle);
+        return hasCycle;
     }
 
     public synchronized void removeEdge(Object src, Object dst) {
@@ -68,10 +74,11 @@ public class CycleDetection {
         if (dst.count == 0) {
             removeNode(dst);
         }
+        Log.debug("removeEdge: %s(%d) --> %s(%d)", src, src.count, dst, dst.count);
     }
 
     public synchronized void removeNode(GraphNode node) {
-        nodes.remove(node);
+        nodes.remove(node.value);
     }
 
     private boolean DFS(GraphNode cur, HashSet<GraphNode> distinct, HashMap<GraphNode, Boolean> result, HashSet<Object> path) {
@@ -99,15 +106,9 @@ public class CycleDetection {
         return result.get(cur);
     }
 
-    public synchronized HashSet<Object> getCycle() {
+    public synchronized boolean hasCycle(GraphNode src) {
         HashSet<GraphNode> distinct = new HashSet<>();
-        HashSet<Object> path = new HashSet<>();
         HashMap<GraphNode, Boolean> result = new HashMap<>();
-        for (GraphNode node : nodes.values()) {
-            if (DFS(node, distinct, result, path)) {
-                return path;
-            }
-        }
-        return path;
+        return DFS(src, distinct, result, null);
     }
 }
