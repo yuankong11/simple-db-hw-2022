@@ -1,4 +1,6 @@
-package simpledb.common;
+package simpledb.storage;
+
+import java.util.HashSet;
 
 /**
  * Exception that is thrown when a deadlock occurs.

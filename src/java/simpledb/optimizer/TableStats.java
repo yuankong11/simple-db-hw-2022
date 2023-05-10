@@ -3,14 +3,16 @@ package simpledb.optimizer;
 import simpledb.common.Database;
 import simpledb.common.Type;
 import simpledb.execution.Predicate;
-import simpledb.execution.SeqScan;
 import simpledb.storage.*;
-import simpledb.transaction.Transaction;
+import simpledb.transaction.TransactionId;
 
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * TableStats represents statistics (e.g., histograms) about base tables in a
@@ -66,6 +68,93 @@ public class TableStats {
      */
     static final int NUM_HIST_BINS = 100;
 
+    static class Stat {
+        Histogram<?> his;
+        int max, min;
+
+        public Stat(int v) {
+            max = v;
+            min = v;
+        }
+
+        void update(int v) {
+            max = Math.max(max, v);
+            min = Math.min(min, v);
+        }
+    }
+
+    private final int IOCost;
+    private final DbFile file;
+    private final int numPages, numTuple;
+    private final HashMap<Integer, Stat> stats = new HashMap<>();
+
+    private void traverseFile(Consumer<Tuple> consumer) {
+        DbFileIterator it = file.iterator(new TransactionId());
+        try {
+            it.open();
+            while (it.hasNext()) {
+                consumer.accept(it.next());
+            }
+            it.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void initHistogram(IntHistogram his, int field) {
+        traverseFile(tuple -> {
+            IntField f = (IntField) tuple.getField(field);
+            his.addValue(f.getValue());
+        });
+    }
+
+    private void initHistogram(StringHistogram his, int field) {
+        traverseFile(tuple -> {
+            StringField f = (StringField) tuple.getField(field);
+            his.addValue(f.getValue());
+        });
+    }
+
+    private boolean histogramNotExist(int field) {
+        return !stats.containsKey(field) || stats.get(field).his == null;
+    }
+
+    private IntHistogram getIntHis(int field) {
+        if (histogramNotExist(field)) {
+            IntHistogram intHis = new IntHistogram(NUM_HIST_BINS, stats.get(field).min, stats.get(field).max);
+            initHistogram(intHis, field);
+            stats.get(field).his = intHis;
+        }
+        return (IntHistogram) stats.get(field).his;
+    }
+
+    private StringHistogram getStrHis(int field) {
+        if (histogramNotExist(field)) {
+            StringHistogram strHis = new StringHistogram(NUM_HIST_BINS);
+            initHistogram(strHis, field);
+            stats.put(field, new Stat(0));
+            stats.get(field).his = strHis;
+        }
+        return (StringHistogram) stats.get(field).his;
+    }
+
+    private Histogram<?> getHistogram(int field) {
+        if (histogramNotExist(field)) {
+            switch (file.getTupleDesc().getFieldType(field)) {
+                case INT_TYPE: return getIntHis(field);
+                case STRING_TYPE: return getStrHis(field);
+                default: throw new IllegalStateException();
+            }
+        }
+        return stats.get(field).his;
+    }
+
+    private List<Integer> getIntFields() {
+        TupleDesc td = file.getTupleDesc();
+        return IntStream.range(0, td.numFields()).filter(i -> td.getFieldType(i) == Type.INT_TYPE)
+                        .boxed().collect(Collectors.toList());
+    }
+
     /**
      * Create a new TableStats object, that keeps track of statistics on each
      * column of a table
@@ -83,6 +172,24 @@ public class TableStats {
         // necessarily have to (for example) do everything
         // in a single scan of the table.
         // TODO: some code goes here
+        IOCost = ioCostPerPage;
+        file = Database.getCatalog().getDatabaseFile(tableid);
+        List<Integer> intFields = getIntFields();
+        AtomicInteger tupleCount = new AtomicInteger(0);
+        traverseFile(tuple -> {
+            for (Integer i : intFields) {
+                int v = ((IntField) tuple.getField(i)).getValue();
+                if (stats.containsKey(i)) {
+                    stats.get(i).update(v);
+                } else {
+                    stats.put(i, new Stat(v));
+                }
+            }
+            tupleCount.incrementAndGet();
+        });
+        numTuple = tupleCount.get();
+        int pageSize = BufferPool.getPageSize();
+        numPages = (numTuple * file.getTupleDesc().getSize() + pageSize - 1) / pageSize;
     }
 
     /**
@@ -99,7 +206,7 @@ public class TableStats {
      */
     public double estimateScanCost() {
         // TODO: some code goes here
-        return 0;
+        return numPages * IOCost;
     }
 
     /**
@@ -112,7 +219,7 @@ public class TableStats {
      */
     public int estimateTableCardinality(double selectivityFactor) {
         // TODO: some code goes here
-        return 0;
+        return (int) (numTuple * selectivityFactor);
     }
 
     /**
@@ -126,7 +233,7 @@ public class TableStats {
      */
     public double avgSelectivity(int field, Predicate.Op op) {
         // TODO: some code goes here
-        return 1.0;
+        return getHistogram(field).avgSelectivity();
     }
 
     /**
@@ -141,7 +248,11 @@ public class TableStats {
      */
     public double estimateSelectivity(int field, Predicate.Op op, Field constant) {
         // TODO: some code goes here
-        return 1.0;
+        switch (constant.getType()) {
+            case INT_TYPE: return getIntHis(field).estimateSelectivity(op, ((IntField) constant).getValue());
+            case STRING_TYPE: return getStrHis(field).estimateSelectivity(op, ((StringField) constant).getValue());
+            default: return 0.0;
+        }
     }
 
     /**
@@ -149,7 +260,7 @@ public class TableStats {
      */
     public int totalTuples() {
         // TODO: some code goes here
-        return 0;
+        return numTuple;
     }
 
 }
