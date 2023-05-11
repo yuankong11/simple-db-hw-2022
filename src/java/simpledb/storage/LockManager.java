@@ -34,61 +34,60 @@ class ReadWriteLock<O> {
         }
     }
 
-    public void readLock(O owner) throws DeadlockException {
-        synchronized (this) {
-            while (true) {
-                if (owners.contains(owner)) {
-                    break;
-                }
-                if (state == LockState.SHARED) {
-                    owners.add(owner);
-                    break;
-                }
-                wait(owner);
-            }
-            cycle.addEdge(this, owner);
-        }
-    }
-
-    public void writeLock(O owner) throws DeadlockException {
-        synchronized (this) {
-            while (true) {
-                if (owners.isEmpty()) {
-                    state = LockState.EXCLUSIVE;
-                    owners.add(owner);
-                    break;
-                }
-                if (owners.size() == 1 && owners.contains(owner)) {
-                    state = LockState.EXCLUSIVE;
-                    break;
-                }
-                wait(owner);
-            }
-            cycle.addEdge(this, owner);
-        }
-    }
-
-    public void releaseLock(O owner) {
-        synchronized (this) {
+    public synchronized void readLock(O owner) throws DeadlockException {
+        while (true) {
             if (owners.contains(owner)) {
-                owners.remove(owner);
-                cycle.removeEdge(this, owner);
-                if (state == LockState.EXCLUSIVE) {
-                    state = LockState.SHARED;
+                break;
+            }
+            if (state == LockState.SHARED) {
+                owners.add(owner);
+                break;
+            }
+            wait(owner);
+        }
+        cycle.addEdge(this, owner);
+    }
+
+    public synchronized void writeLock(O owner) throws DeadlockException {
+        while (true) {
+            if (owners.isEmpty()) {
+                state = LockState.EXCLUSIVE;
+                owners.add(owner);
+                break;
+            }
+            if (owners.size() == 1 && owners.contains(owner)) {
+                state = LockState.EXCLUSIVE;
+                break;
+            }
+            try {
+                wait(owner);
+            } catch (DeadlockException e) {
+                if (owners.contains(owner)) {
+                    e.setUpgradeDeadlock();
+                }
+                throw e;
+            }
+        }
+        cycle.addEdge(this, owner);
+    }
+
+    public synchronized void releaseLock(O owner) {
+        if (owners.contains(owner)) {
+            owners.remove(owner);
+            cycle.removeEdge(this, owner);
+            if (state == LockState.EXCLUSIVE) {
+                state = LockState.SHARED;
+                notify();
+            } else {
+                if (owners.isEmpty()) {
                     notify();
-                } else {
-                    if (owners.isEmpty()) {
-                        notify();
-                    }
                 }
             }
         }
     }
 
-    public boolean holdLock(O owner) {
-        synchronized (this) {
-            return owners.contains(owner);
-        }
+    public synchronized boolean holdLock(O owner) {
+        return owners.contains(owner);
     }
 
     @Override
@@ -128,13 +127,15 @@ public class LockManager {
         try {
             acquireLockOnce(pid, tid, perm);
         } catch (DeadlockException e) {
-            // sleep and try again, maybe one will win, avoid retry all tx
-            long avoid = new Random().nextInt(500);
-            try {
-                Thread.sleep(avoid);
-            } catch (InterruptedException ignored) {
+            if (e.isUpgradeDeadlock()) {
+                // sleep and try again, maybe one will win, avoid retry all tx
+                long avoid = new Random().nextInt(500);
+                try {
+                    Thread.sleep(avoid);
+                } catch (InterruptedException ignored) {
+                }
+                acquireLockOnce(pid, tid, perm);
             }
-            acquireLockOnce(pid, tid, perm);
         }
     }
 

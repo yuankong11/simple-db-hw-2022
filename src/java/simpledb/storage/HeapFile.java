@@ -167,12 +167,8 @@ public class HeapFile implements DbFile {
             final Permissions perm = Permissions.READ_ONLY;
 
             private Iterator<Tuple> getIterator() throws DbException, TransactionAbortedException {
-                try {
-                    HeapPage page = (HeapPage) bp.getPage(tid, new HeapPageId(getId(), pageNumber++), perm);
-                    return page.iterator();
-                } catch (IOException e) {
-                    return null;
-                }
+                HeapPage page = (HeapPage) bp.getPage(tid, new HeapPageId(getId(), pageNumber++), perm);
+                return page.iterator();
             }
 
             private void updateIterator() throws DbException, TransactionAbortedException {

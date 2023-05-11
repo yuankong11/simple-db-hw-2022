@@ -190,19 +190,15 @@ public class LRUCache<K, V> {
             return null;
         } else {
             K removed = null;
-            boolean failed = false;
             if (size == capacity) {
                 removed = evict();
                 if (removed == null) {
-                    failed = true;
+                    throw new IllegalStateException("can not evict");
                 }
             }
             LRUNode<Pair<K, V>> node = list.addFirst(new Pair<>(key, value));
             nodes.put(key, node);
             size++;
-            if (failed) {
-                throw new IllegalStateException("can not evict");
-            }
             return removed;
         }
     }
