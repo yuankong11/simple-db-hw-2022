@@ -186,7 +186,22 @@ public class BTreeFile implements DbFile {
                                        Field f)
             throws DbException, TransactionAbortedException {
         // TODO: some code goes here
-        return null;
+        if (pid.pgcateg() == BTreePageId.LEAF) {
+            return (BTreeLeafPage) getPage(tid, dirtypages, pid, perm);
+        } else {
+            BTreeInternalPage page = (BTreeInternalPage) getPage(tid, dirtypages, pid, Permissions.READ_ONLY);
+            Iterator<BTreeEntry> it = page.iterator();
+            while (it.hasNext()) {
+                BTreeEntry entry = it.next();
+                if (f == null || entry.getKey().compare(Op.GREATER_THAN, f)) {
+                    return findLeafPage(tid, dirtypages, entry.getLeftChild(), perm, f);
+                }
+                if (entry.getKey().compare(Op.EQUALS, f)) {
+                    return findLeafPage(tid, dirtypages, entry.getRightChild(), perm, f);
+                }
+            }
+            return findLeafPage(tid, dirtypages, page.getChildId(page.getNumEntries()), perm, f);
+        }
     }
 
     /**
@@ -356,7 +371,7 @@ public class BTreeFile implements DbFile {
      * @param page       - the parent page
      * @throws DbException
      * @throws TransactionAbortedException
-     * @see #updateParentPointer(TransactionId, HashMap, BTreePageId, BTreePageId)
+     * @see #updateParentPointer
      */
     private void updateParentPointers(TransactionId tid, Map<PageId, Page> dirtypages, BTreeInternalPage page)
             throws DbException, TransactionAbortedException {
