@@ -90,7 +90,7 @@ public class Insert extends Operator {
         while (child.hasNext()) {
             Tuple t = child.next();
             try {
-                Database.getBufferPool().insertTuple(tid, tableID, t);
+                Database.getBufferPool().insertTuple(tid, tableID, new Tuple(t, true));
                 count++;
             } catch (IOException e) {
                 e.printStackTrace();

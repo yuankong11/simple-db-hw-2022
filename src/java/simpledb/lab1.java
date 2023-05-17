@@ -6,7 +6,6 @@ import simpledb.storage.*;
 import simpledb.transaction.*;
 
 import java.io.*;
-import java.util.Arrays;
 
 public class lab1 {
     public static void main(String[] argv) {

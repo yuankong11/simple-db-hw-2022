@@ -14,8 +14,8 @@ public class Filter extends Operator {
 
     private static final long serialVersionUID = 1L;
 
-    OpIterator child;
-    Predicate pred;
+    private OpIterator child;
+    private final Predicate pred;
 
     /**
      * Constructor accepts a predicate to apply and a child operator to read

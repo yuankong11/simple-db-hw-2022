@@ -295,7 +295,6 @@ public class BTreeLeafPage extends BTreePage {
         if (!isSlotUsed(rid.getTupleNumber()))
             throw new DbException("tried to delete null tuple.");
         markSlotUsed(rid.getTupleNumber(), false);
-        t.setRecordId(null);
     }
 
     /**
@@ -539,8 +538,10 @@ class BTreeLeafPageIterator implements Iterator<Tuple> {
         try {
             while (true) {
                 nextToReturn = p.getTuple(curTuple++);
-                if (nextToReturn != null)
+                if (nextToReturn != null) {
+                    nextToReturn = new TupleView(nextToReturn);
                     return true;
+                }
             }
         } catch (NoSuchElementException e) {
             return false;
@@ -588,8 +589,10 @@ class BTreeLeafPageReverseIterator implements Iterator<Tuple> {
         try {
             while (curTuple >= 0) {
                 nextToReturn = p.getTuple(curTuple--);
-                if (nextToReturn != null)
+                if (nextToReturn != null) {
+                    nextToReturn = new TupleView(nextToReturn);
                     return true;
+                }
             }
             return false;
         } catch (NoSuchElementException e) {

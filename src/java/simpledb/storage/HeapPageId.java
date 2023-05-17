@@ -6,7 +6,7 @@ import java.util.Objects;
  * Unique identifier for HeapPage objects.
  */
 public class HeapPageId implements PageId {
-    int tableID, pageNumber;
+    private final int tableID, pageNumber;
 
     /**
      * Constructor. Create a page id structure for a specific page of a

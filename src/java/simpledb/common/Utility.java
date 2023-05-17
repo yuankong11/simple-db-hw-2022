@@ -5,6 +5,7 @@ import simpledb.storage.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
@@ -164,6 +165,25 @@ public class Utility {
             out.append(i);
         }
         return out.toString();
+    }
+
+    public static <E> Iterator<E> immutableIterator(Iterator<E> it) {
+        return new Iterator<>() {
+            @Override
+            public boolean hasNext() {
+                return it.hasNext();
+            }
+
+            @Override
+            public E next() {
+                return it.next();
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+        };
     }
 }
 

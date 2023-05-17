@@ -6,35 +6,36 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Objects;
 
-class GraphNode {
-    final Object value;
-    final HashSet<GraphNode> next = new HashSet<>();
-    int count; // edge count
-
-    public GraphNode(Object value) {
-        this.value = value;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        GraphNode graphNode = (GraphNode) o;
-        return Objects.equals(value, graphNode.value) && Objects.equals(next, graphNode.next);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(value);
-    }
-
-    @Override
-    public String toString() {
-        return value.toString();
-    }
-}
-
 public class CycleDetection {
+    static class GraphNode {
+        private final Object value;
+        private final HashSet<GraphNode> next = new HashSet<>();
+        private int count; // edge count
+
+        public GraphNode(Object value) {
+            this.value = value;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            GraphNode graphNode = (GraphNode) o;
+            return Objects.equals(value, graphNode.value) && Objects.equals(next, graphNode.next);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(value);
+        }
+
+        @Override
+        public String toString() {
+            return value.toString();
+        }
+    }
+
+    // key in nodes should have immutable hashcode
     private final HashMap<Object, GraphNode> nodes = new HashMap<>();
 
     public synchronized GraphNode getNode(Object value) {

@@ -1,8 +1,6 @@
 package simpledb.execution;
 
 import simpledb.common.Type;
-import simpledb.storage.Field;
-import simpledb.storage.IntField;
 import simpledb.storage.StringField;
 import simpledb.storage.Tuple;
 
@@ -32,7 +30,7 @@ public class StringAggregator extends IntegerAggregator implements Aggregator {
 
     @Override
     Object getValue(Tuple tuple) throws ClassCastException {
-        return ((StringField) tuple.getField(valueField)).getValue();
+        return ((StringField) tuple.getField(getValueField())).getValue();
     }
 
     /**

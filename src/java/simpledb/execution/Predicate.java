@@ -48,9 +48,9 @@ public class Predicate implements Serializable {
 
     }
 
-    int field;
-    Op op;
-    Field operand;
+    private final int field;
+    private final Op op;
+    private final Field operand;
 
     /**
      * Constructor.

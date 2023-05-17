@@ -6,7 +6,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 
 class LRUNode<V> {
-    V val;
+    final V val;
     LRUNode<V> prev, next;
 
     public LRUNode(V val) {
@@ -104,7 +104,7 @@ class LRUList<V> {
     }
 
     Iterator<V> iteratorFromFirst() {
-        return new Iterator<V>() {
+        return new Iterator<>() {
             LRUNode<V> cur = head;
 
             @Override
@@ -121,7 +121,7 @@ class LRUList<V> {
     }
 
     Iterator<V> iteratorFromLast() {
-        return new Iterator<V>() {
+        return new Iterator<>() {
             LRUNode<V> cur = tail;
 
             @Override
@@ -153,7 +153,7 @@ class LRUList<V> {
 
 public class LRUCache<K, V> {
     static class Pair<K, V> {
-        K k;
+        final K k;
         V v;
 
         public Pair(K k, V v) {

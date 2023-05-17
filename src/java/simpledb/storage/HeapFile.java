@@ -2,7 +2,6 @@ package simpledb.storage;
 
 import simpledb.common.Database;
 import simpledb.common.DbException;
-import simpledb.common.Debug;
 import simpledb.common.Permissions;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
@@ -21,9 +20,9 @@ import java.util.*;
  * @see HeapPage#HeapPage
  */
 public class HeapFile implements DbFile {
-    File file;
-    TupleDesc td;
-    int numPages;
+    private final File file;
+    private final TupleDesc td;
+    private int numPages;
 
     /**
      * Constructs a heap file backed by the specified file.

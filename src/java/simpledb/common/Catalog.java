@@ -22,10 +22,10 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class Catalog {
     static class Item {
-        String name;
-        TupleDesc td;
-        DbFile file;
-        String pKey;
+        private final String name;
+        private final TupleDesc td;
+        private final DbFile file;
+        private final String pKey;
 
         public Item(String name, TupleDesc td, DbFile file, String pKey) {
             this.name = name;

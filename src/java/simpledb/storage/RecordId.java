@@ -27,6 +27,10 @@ public class RecordId implements Serializable {
         tupleNumber = tupleno;
     }
 
+    public RecordId(RecordId r) {
+        this(r.pageID, r.tupleNumber);
+    }
+
     /**
      * @return the tuple number this RecordId references.
      */

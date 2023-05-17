@@ -20,11 +20,11 @@ public class IntegerAggregator implements Aggregator {
 
     private static final long serialVersionUID = 1L;
 
-    int groupByField, valueField;
-    Type groupByType;
-    Op op;
+    private final int groupByField, valueField;
+    private final Type groupByType;
+    private final Op op;
 
-    HashMap<Field, int[]> map;
+    private final HashMap<Field, int[]> map;
 
     /**
      * Aggregate constructor
@@ -45,8 +45,12 @@ public class IntegerAggregator implements Aggregator {
         map = new HashMap<>();
     }
 
+    public int getValueField() {
+        return valueField;
+    }
+
     Object getValue(Tuple tuple) throws ClassCastException {
-        return ((IntField) tuple.getField(valueField)).getValue();
+        return ((IntField) tuple.getField(getValueField())).getValue();
     }
 
     /**

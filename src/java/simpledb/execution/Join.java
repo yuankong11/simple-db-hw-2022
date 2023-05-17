@@ -16,10 +16,10 @@ public class Join extends Operator {
 
     private static final long serialVersionUID = 1L;
 
-    OpIterator[] children;
-    JoinPredicate pred;
-    Tuple tuple1;
-    TupleDesc td;
+    private OpIterator[] children;
+    private final JoinPredicate pred;
+    private Tuple tuple1;
+    private TupleDesc td;
 
     /**
      * Constructor. Accepts two children to join and the predicate to join them

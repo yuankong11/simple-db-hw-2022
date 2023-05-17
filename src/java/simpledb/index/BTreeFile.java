@@ -1,9 +1,6 @@
 package simpledb.index;
 
-import simpledb.common.Database;
-import simpledb.common.DbException;
-import simpledb.common.Debug;
-import simpledb.common.Permissions;
+import simpledb.common.*;
 import simpledb.execution.IndexPredicate;
 import simpledb.execution.Predicate.Op;
 import simpledb.storage.*;
@@ -193,11 +190,8 @@ public class BTreeFile implements DbFile {
             Iterator<BTreeEntry> it = page.iterator();
             while (it.hasNext()) {
                 BTreeEntry entry = it.next();
-                if (f == null || entry.getKey().compare(Op.GREATER_THAN, f)) {
+                if (f == null || entry.getKey().compare(Op.GREATER_THAN_OR_EQ, f)) {
                     return findLeafPage(tid, dirtypages, entry.getLeftChild(), perm, f);
-                }
-                if (entry.getKey().compare(Op.EQUALS, f)) {
-                    return findLeafPage(tid, dirtypages, entry.getRightChild(), perm, f);
                 }
             }
             return findLeafPage(tid, dirtypages, page.getChildId(page.getNumEntries()), perm, f);
@@ -250,8 +244,46 @@ public class BTreeFile implements DbFile {
         // the new entry.  getParentWithEmtpySlots() will be useful here.  Don't forget to update
         // the sibling pointers of all the affected leaf pages.  Return the page into which a
         // tuple with the given key field should be inserted.
-        return null;
 
+        BTreeLeafPage leftPage = page, rightPage = (BTreeLeafPage) getEmptyPage(tid, dirtypages, BTreePageId.LEAF);
+        int tupleNum = leftPage.getNumTuples();
+        int leftTupleNum = tupleNum / 2, rightTupleNum = tupleNum - leftTupleNum;
+        BTreePageId leftId = leftPage.getId(), rightId = rightPage.getId();
+        Iterator<Tuple> leftIt = leftPage.iterator();
+        for (int i = 0; i < leftTupleNum; i++) {
+            leftIt.next();
+        }
+        Tuple rightFirst = leftIt.next();
+        List<Tuple> deleted = new ArrayList<>(rightTupleNum - 1);
+        deleted.add(rightFirst);
+        rightPage.insertTuple(new Tuple(rightFirst, true));
+        for (int i = 1; i < rightTupleNum; i++) {
+            Tuple tuple = leftIt.next();
+            deleted.add(tuple);
+            rightPage.insertTuple(new Tuple(tuple, true));
+        }
+        for (Tuple t : deleted) {
+            leftPage.deleteTuple(t);
+        }
+        Field rightFirstKeyField = rightFirst.getField(keyField());
+        BTreeInternalPage parentPage = getParentWithEmptySlots(tid, dirtypages, leftPage.getParentId(), rightFirstKeyField);
+        parentPage.insertEntry(new BTreeEntry(rightFirstKeyField, leftId, rightId));
+        leftPage.setParentId(parentPage.getId());
+        rightPage.setParentId(parentPage.getId());
+        rightPage.setRightSiblingId(leftPage.getRightSiblingId());
+        rightPage.setLeftSiblingId(leftId);
+        if (leftPage.getRightSiblingId() != null) {
+            BTreeLeafPage rightSiblingOfLeftPage = (BTreeLeafPage) getPage(tid, dirtypages, leftPage.getRightSiblingId(), Permissions.READ_WRITE);
+            rightSiblingOfLeftPage.setLeftSiblingId(rightId);
+        }
+        leftPage.setRightSiblingId(rightId);
+        return field.compare(Op.GREATER_THAN, rightFirstKeyField) ? rightPage : leftPage;
+    }
+
+    private BTreeEntry copyForDel(BTreeEntry e) {
+        BTreeEntry copy = new BTreeEntry(null, null, null);
+        copy.setRecordId(e.getRecordId());
+        return copy;
     }
 
     /**
@@ -287,7 +319,34 @@ public class BTreeFile implements DbFile {
         // the parent pointers of all the children moving to the new page.  updateParentPointers()
         // will be useful here.  Return the page into which an entry with the given key field
         // should be inserted.
-        return null;
+
+        BTreeInternalPage leftPage = page, rightPage = (BTreeInternalPage) getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
+        int entryNum = leftPage.getNumEntries();
+        int leftTupleNum = entryNum / 2, rightTupleNum = entryNum - leftTupleNum - 1;
+        BTreePageId leftId = leftPage.getId(), rightId = rightPage.getId();
+        Iterator<BTreeEntry> leftIt = leftPage.iterator();
+        for (int i = 0; i < leftTupleNum; i++) {
+            leftIt.next();
+        }
+        BTreeEntry rightFirst = leftIt.next();
+        List<BTreeEntry> deleted = new ArrayList<>(rightTupleNum);
+        deleted.add(copyForDel(rightFirst));
+        // push up, do not insert into rightPage
+        for (int i = 0; i < rightTupleNum; i++) {
+            BTreeEntry entry = leftIt.next();
+            deleted.add(copyForDel(entry));
+            rightPage.insertEntry(entry);
+        }
+        for (BTreeEntry e : deleted) {
+            leftPage.deleteKeyAndRightChild(e);
+        }
+        Field rightFirstKeyField = rightFirst.getKey();
+        BTreeInternalPage parentPage = getParentWithEmptySlots(tid, dirtypages, leftPage.getParentId(), rightFirstKeyField);
+        parentPage.insertEntry(new BTreeEntry(rightFirstKeyField, leftId, rightId));
+        updateParentPointers(tid, dirtypages, rightPage);
+        leftPage.setParentId(parentPage.getId());
+        rightPage.setParentId(parentPage.getId());
+        return field.compare(Op.GREATER_THAN, rightFirstKeyField) ? rightPage : leftPage;
     }
 
     /**

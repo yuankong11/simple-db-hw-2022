@@ -89,6 +89,8 @@ public class BTreePageId implements PageId {
      *         ids and pgcateg are the same)
      */
     public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null) return false;
         if (!(o instanceof BTreePageId))
             return false;
         BTreePageId p = (BTreePageId) o;

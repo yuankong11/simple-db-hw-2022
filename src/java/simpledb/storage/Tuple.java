@@ -1,5 +1,7 @@
 package simpledb.storage;
 
+import simpledb.common.Utility;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -13,7 +15,7 @@ public class Tuple implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private TupleDesc td;
+    private final TupleDesc td;
     private final ArrayList<Field> fields;
 
     private RecordId record;
@@ -31,6 +33,22 @@ public class Tuple implements Serializable {
         for (int i = 0; i < td.numFields(); i++) {
             fields.add(null);
         }
+    }
+
+    public Tuple(Tuple t, boolean copyFields) {
+        // td is immutable
+        td = t.td;
+        if (copyFields) {
+            fields = new ArrayList<>(td.numFields());
+            for (int i = 0; i < td.numFields(); i++) {
+                // field is immutable
+                fields.add(t.fields.get(i));
+            }
+        } else {
+            fields = t.fields;
+        }
+        // record id is immutable
+        record = t.record;
     }
 
     /**
@@ -108,14 +126,17 @@ public class Tuple implements Serializable {
      */
     public Iterator<Field> fields() {
         // TODO: some code goes here
-        return fields.iterator();
+        return Utility.immutableIterator(fields.iterator());
     }
 
-    /**
-     * reset the TupleDesc of this tuple (only affecting the TupleDesc)
-     */
-    public void resetTupleDesc(TupleDesc td) {
-        // TODO: some code goes here
-        this.td = td;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null) return false;
+        if (o instanceof Tuple) {
+            Tuple t = (Tuple) o;
+            return td == t.td && fields == t.fields && record == t.record;
+        }
+        return false;
     }
 }

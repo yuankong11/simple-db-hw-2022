@@ -2,7 +2,6 @@ package simpledb.execution;
 
 import simpledb.common.DbException;
 import simpledb.common.Type;
-import simpledb.execution.Aggregator.Op;
 import simpledb.storage.Tuple;
 import simpledb.storage.TupleDesc;
 import simpledb.transaction.TransactionAbortedException;
@@ -18,12 +17,12 @@ public class Aggregate extends Operator {
 
     private static final long serialVersionUID = 1L;
 
-    OpIterator child;
-    int valueField, groupByField;
-    Aggregator.Op op;
+    private OpIterator child;
+    private final int valueField, groupByField;
+    private final Aggregator.Op op;
 
-    OpIterator it;
-    TupleDesc td;
+    private OpIterator it;
+    private final TupleDesc td;
 
     /**
      * Constructor.

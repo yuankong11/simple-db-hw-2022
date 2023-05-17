@@ -1,6 +1,7 @@
 package simpledb.storage;
 
 import simpledb.common.Type;
+import simpledb.common.Utility;
 
 import java.io.Serializable;
 import java.util.*;
@@ -48,7 +49,7 @@ public class TupleDesc implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final ArrayList<TDItem> items;
-    private HashMap<String, Integer> names;
+    private final HashMap<String, Integer> names;
     private int size = 0;
 
     /**
@@ -57,7 +58,7 @@ public class TupleDesc implements Serializable {
      */
     public Iterator<TDItem> iterator() {
         // TODO: some code goes here
-        return items.iterator();
+        return Utility.immutableIterator(items.iterator());
     }
 
     /**

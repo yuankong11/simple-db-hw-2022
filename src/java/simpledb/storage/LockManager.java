@@ -22,14 +22,14 @@ class ReadWriteLock<O> {
         this.cycle = cycle;
     }
 
-    private void wait(O o) throws DeadlockException {
+    private void wait(O owner) throws DeadlockException {
         try {
-            if (cycle.addEdge(o, this)) {
-                cycle.removeEdge(o, this);
+            if (cycle.addEdge(owner, this)) {
+                cycle.removeEdge(owner, this);
                 throw new DeadlockException();
             }
             wait();
-            cycle.removeEdge(o, this);
+            cycle.removeEdge(owner, this);
         } catch (InterruptedException ignored) {
         }
     }
