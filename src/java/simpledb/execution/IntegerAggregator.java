@@ -1,7 +1,17 @@
 package simpledb.execution;
 
+import simpledb.common.DbException;
 import simpledb.common.Type;
+import simpledb.storage.Field;
+import simpledb.storage.IntField;
 import simpledb.storage.Tuple;
+import simpledb.storage.TupleDesc;
+import simpledb.transaction.TransactionAbortedException;
+
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.NoSuchElementException;
 
 /**
  * Knows how to compute some aggregate over a set of IntFields.
@@ -9,6 +19,12 @@ import simpledb.storage.Tuple;
 public class IntegerAggregator implements Aggregator {
 
     private static final long serialVersionUID = 1L;
+
+    private final int groupByField, valueField;
+    private final Type groupByType;
+    private final Op op;
+
+    private final HashMap<Field, int[]> map;
 
     /**
      * Aggregate constructor
@@ -20,9 +36,21 @@ public class IntegerAggregator implements Aggregator {
      * @param afield      the 0-based index of the aggregate field in the tuple
      * @param what        the aggregation operator
      */
-
     public IntegerAggregator(int gbfield, Type gbfieldtype, int afield, Op what) {
         // TODO: some code goes here
+        groupByField = gbfield;
+        groupByType = gbfieldtype;
+        valueField = afield;
+        op = what;
+        map = new HashMap<>();
+    }
+
+    public int getValueField() {
+        return valueField;
+    }
+
+    Object getValue(Tuple tuple) throws ClassCastException {
+        return ((IntField) tuple.getField(getValueField())).getValue();
     }
 
     /**
@@ -33,6 +61,17 @@ public class IntegerAggregator implements Aggregator {
      */
     public void mergeTupleIntoGroup(Tuple tup) {
         // TODO: some code goes here
+        Field key;
+        if (groupByField == Aggregator.NO_GROUPING) {
+            key = new IntField(Aggregator.NO_GROUPING);
+        } else {
+            key = tup.getField(groupByField);
+        }
+        if (map.containsKey(key)) {
+            op.mergeValue(map.get(key), getValue(tup));
+        } else {
+            map.put(key, op.newValue(getValue(tup)));
+        }
     }
 
     /**
@@ -45,8 +84,49 @@ public class IntegerAggregator implements Aggregator {
      */
     public OpIterator iterator() {
         // TODO: some code goes here
-        throw new
-        UnsupportedOperationException("please implement me for lab2");
+        return new OpIterator() {
+            Iterator<Map.Entry<Field, int[]>> it;
+            final TupleDesc td = new TupleDesc(op.getTypes(groupByType));
+
+            @Override
+            public void open() throws DbException, TransactionAbortedException {
+                it = map.entrySet().iterator();
+            }
+
+            @Override
+            public boolean hasNext() throws DbException, TransactionAbortedException {
+                return it != null && it.hasNext();
+            }
+
+            @Override
+            public Tuple next() throws DbException, TransactionAbortedException, NoSuchElementException {
+                if (!hasNext()) {
+                    throw new NoSuchElementException();
+                }
+                Tuple tuple = new Tuple(td);
+                Map.Entry<Field, int[]> entry = it.next();
+                Field key = entry.getKey();
+                int[] value = entry.getValue();
+                tuple.setField(0, key);
+                op.setTuple(tuple, value);
+                return tuple;
+            }
+
+            @Override
+            public void rewind() throws DbException, TransactionAbortedException {
+                it = map.entrySet().iterator();
+            }
+
+            @Override
+            public TupleDesc getTupleDesc() {
+                return td;
+            }
+
+            @Override
+            public void close() {
+                it = null;
+            }
+        };
     }
 
 }

@@ -3,7 +3,6 @@ package simpledb.optimizer;
 import simpledb.ParsingException;
 import simpledb.common.Database;
 import simpledb.execution.*;
-import simpledb.storage.TupleDesc;
 
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -105,7 +104,7 @@ public class JoinOptimizer {
             // HINT: You may need to use the variable "j" if you implemented
             // a join algorithm that's more complicated than a basic
             // nested-loops join.
-            return -1.0;
+            return cost1 + card1 * (cost2 + card2);
         }
     }
 
@@ -135,6 +134,8 @@ public class JoinOptimizer {
         }
     }
 
+    private static final double RANGE_JOIN_FRACTION = 0.3;
+
     /**
      * Estimate the join cardinality of two tables.
      */
@@ -143,9 +144,21 @@ public class JoinOptimizer {
                                                    String field2PureName, int card1, int card2, boolean t1pkey,
                                                    boolean t2pkey, Map<String, TableStats> stats,
                                                    Map<String, Integer> tableAliasToId) {
-        int card = 1;
+        int card;
         // TODO: some code goes here
-        return card <= 0 ? 1 : card;
+        if (joinOp == Predicate.Op.EQUALS) {
+            if (t1pkey && t2pkey) {
+                card = Math.min(card1, card2);
+            } else if (t1pkey || t2pkey) {
+                card = Math.max(card1, card2);
+            } else {
+                // no primary key, simple estimation
+                card = Math.max(card1, card2);
+            }
+        } else {
+            card = (int) (RANGE_JOIN_FRACTION * card1 * card2);
+        }
+        return card;
     }
 
     /**
@@ -156,7 +169,7 @@ public class JoinOptimizer {
      * @param size The size of the subsets of interest
      * @return a set of all subsets of the specified size
      */
-    public <T> Set<Set<T>> enumerateSubsets(List<T> v, int size) {
+    public static <T> Set<Set<T>> enumerateSubsetsOld(List<T> v, int size) {
         Set<Set<T>> els = new HashSet<>();
         els.add(new HashSet<>());
         // Iterator<Set> it;
@@ -176,6 +189,29 @@ public class JoinOptimizer {
 
         return els;
 
+    }
+
+    public static <T> void enumerateSubsetsOptSub(List<T> v, int size, Set<T> current, int i, Set<Set<T>> result) {
+        if (current.size() == size) {
+            result.add(new HashSet<>(current));
+            return;
+        }
+        if (i == v.size()) {
+            return;
+        }
+        T t = v.get(i);
+        if (!current.contains(t)) {
+            current.add(t);
+            enumerateSubsetsOptSub(v, size, current, i+1, result);
+            current.remove(t);
+        }
+        enumerateSubsetsOptSub(v, size, current, i+1, result);
+    }
+
+    public static <T> Set<Set<T>> enumerateSubsets(List<T> v, int size) {
+        Set<Set<T>> result = new HashSet<>();
+        enumerateSubsetsOptSub(v, size, new HashSet<>(), 0, result);
+        return result;
     }
 
     /**
@@ -199,9 +235,26 @@ public class JoinOptimizer {
             Map<String, Double> filterSelectivities, boolean explain)
             throws ParsingException {
         // Not necessary for labs 1 and 2.
-
         // TODO: some code goes here
-        return joins;
+        PlanCache pc = new PlanCache();
+        for (int i = 1; i <= joins.size(); i++) {
+            Set<Set<LogicalJoinNode>> subsets = enumerateSubsets(joins, i);
+            for (Set<LogicalJoinNode> subset : subsets) {
+                CostCard opt = null;
+                for (LogicalJoinNode e : subset) {
+                    CostCard cc = computeCostAndCardOfSubplan(stats, filterSelectivities, e,
+                                                              subset, opt == null ? Double.MAX_VALUE : opt.cost, pc);
+                    if (cc != null) {
+                        opt = cc;
+                    }
+                }
+                if (opt != null) {
+                    pc.addPlan(subset, opt.cost, opt.card, opt.plan);
+                }
+            }
+        }
+        List<LogicalJoinNode> opt = pc.getOrder(new HashSet<>(joins));
+        return opt == null ? joins : opt;
     }
 
     // ===================== Private Methods =================================

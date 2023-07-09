@@ -304,7 +304,7 @@ public class BTreeHeaderPage implements Page {
      */
     public int getEmptySlot() {
         for (int i = 0; i < header.length; i++) {
-            if ((int) header[i] != 0xFF) {
+            if (header[i] != (byte) 0xFF) {
                 for (int j = 0; j < 8; j++) {
                     if (!isSlotUsed(i * 8 + j)) {
                         return i * 8 + j;

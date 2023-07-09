@@ -2,7 +2,6 @@ package simpledb.execution;
 
 import simpledb.common.DbException;
 import simpledb.common.Type;
-import simpledb.execution.Aggregator.Op;
 import simpledb.storage.Tuple;
 import simpledb.storage.TupleDesc;
 import simpledb.transaction.TransactionAbortedException;
@@ -17,6 +16,13 @@ import java.util.NoSuchElementException;
 public class Aggregate extends Operator {
 
     private static final long serialVersionUID = 1L;
+
+    private OpIterator child;
+    private final int valueField, groupByField;
+    private final Aggregator.Op op;
+
+    private OpIterator it;
+    private final TupleDesc td;
 
     /**
      * Constructor.
@@ -33,6 +39,15 @@ public class Aggregate extends Operator {
      */
     public Aggregate(OpIterator child, int afield, int gfield, Aggregator.Op aop) {
         // TODO: some code goes here
+        this.child = child;
+        valueField = afield;
+        groupByField = gfield;
+        op = aop;
+        Type type = null;
+        if (groupByField != Aggregator.NO_GROUPING) {
+            type = child.getTupleDesc().getFieldType(groupByField);
+        }
+        td = new TupleDesc(op.getTypes(type));
     }
 
     /**
@@ -42,7 +57,7 @@ public class Aggregate extends Operator {
      */
     public int groupField() {
         // TODO: some code goes here
-        return -1;
+        return groupByField;
     }
 
     /**
@@ -52,7 +67,7 @@ public class Aggregate extends Operator {
      */
     public String groupFieldName() {
         // TODO: some code goes here
-        return null;
+        return child.getTupleDesc().getFieldName(groupByField);
     }
 
     /**
@@ -60,7 +75,7 @@ public class Aggregate extends Operator {
      */
     public int aggregateField() {
         // TODO: some code goes here
-        return -1;
+        return valueField;
     }
 
     /**
@@ -69,7 +84,7 @@ public class Aggregate extends Operator {
      */
     public String aggregateFieldName() {
         // TODO: some code goes here
-        return null;
+        return child.getTupleDesc().getFieldName(valueField);
     }
 
     /**
@@ -77,16 +92,41 @@ public class Aggregate extends Operator {
      */
     public Aggregator.Op aggregateOp() {
         // TODO: some code goes here
-        return null;
+        return op;
     }
 
     public static String nameOfAggregatorOp(Aggregator.Op aop) {
         return aop.toString();
     }
 
+    void calcResult() throws TransactionAbortedException, DbException {
+        Aggregator agg = null;
+        TupleDesc childTd = child.getTupleDesc();
+        Type groupByType = groupByField == Aggregator.NO_GROUPING ? null : childTd.getFieldType(groupByField);
+        switch (childTd.getFieldType(valueField)) {
+            case INT_TYPE:
+                agg = new IntegerAggregator(groupByField, groupByType, valueField, op);
+                break;
+            case STRING_TYPE:
+                agg = new StringAggregator(groupByField, groupByType, valueField, op);
+                break;
+        }
+        if (agg == null) {
+            return;
+        }
+        while (child.hasNext()) {
+            agg.mergeTupleIntoGroup(child.next());
+        }
+        it = agg.iterator();
+        it.open();
+    }
+
     public void open() throws NoSuchElementException, DbException,
             TransactionAbortedException {
         // TODO: some code goes here
+        super.open();
+        child.open();
+        calcResult();
     }
 
     /**
@@ -98,11 +138,18 @@ public class Aggregate extends Operator {
      */
     protected Tuple fetchNext() throws TransactionAbortedException, DbException {
         // TODO: some code goes here
-        return null;
+        try {
+            return it.next();
+        } catch (NoSuchElementException e) {
+            return null;
+        }
     }
 
     public void rewind() throws DbException, TransactionAbortedException {
         // TODO: some code goes here
+        super.rewind();
+        child.rewind();
+        calcResult();
     }
 
     /**
@@ -118,22 +165,29 @@ public class Aggregate extends Operator {
      */
     public TupleDesc getTupleDesc() {
         // TODO: some code goes here
-        return null;
+        return td;
     }
 
     public void close() {
         // TODO: some code goes here
+        super.close();
+        child.close();
+        it = null;
     }
 
     @Override
     public OpIterator[] getChildren() {
         // TODO: some code goes here
-        return null;
+        return new OpIterator[] {child};
     }
 
     @Override
-    public void setChildren(OpIterator[] children) {
+    public void setChildren(OpIterator[] children) throws IllegalArgumentException {
         // TODO: some code goes here
+        if (children == null || children.length != 1) {
+            throw new IllegalArgumentException();
+        }
+        child = children[0];
     }
 
 }

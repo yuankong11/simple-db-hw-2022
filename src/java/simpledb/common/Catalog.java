@@ -21,6 +21,22 @@ import java.util.concurrent.ConcurrentHashMap;
  * @Threadsafe
  */
 public class Catalog {
+    static class Item {
+        private final String name;
+        private final TupleDesc td;
+        private final DbFile file;
+        private final String pKey;
+
+        public Item(String name, TupleDesc td, DbFile file, String pKey) {
+            this.name = name;
+            this.td = td;
+            this.file = file;
+            this.pKey = pKey;
+        }
+    }
+
+    private final ConcurrentHashMap<String, Integer> ids;
+    private final ConcurrentHashMap<Integer, Item> item;
 
     /**
      * Constructor.
@@ -28,6 +44,8 @@ public class Catalog {
      */
     public Catalog() {
         // TODO: some code goes here
+        ids = new ConcurrentHashMap<>();
+        item = new ConcurrentHashMap<>();
     }
 
     /**
@@ -40,8 +58,17 @@ public class Catalog {
      *                  conflict exists, use the last table to be added as the table for a given name.
      * @param pkeyField the name of the primary key field
      */
-    public void addTable(DbFile file, String name, String pkeyField) {
+    public synchronized void addTable(DbFile file, String name, String pkeyField) {
         // TODO: some code goes here
+        int id = file.getId();
+        if (item.containsKey(id)) {
+            ids.remove(item.get(id).name);
+        }
+        if (ids.containsKey(name)) {
+            item.remove(ids.get(name));
+        }
+        ids.put(name, id);
+        item.put(id, new Item(name, file.getTupleDesc(), file, pkeyField));
     }
 
     public void addTable(DbFile file, String name) {
@@ -60,6 +87,18 @@ public class Catalog {
         addTable(file, (UUID.randomUUID()).toString());
     }
 
+    private void ensureTableExist(String name) throws NoSuchElementException {
+        if (name == null || !ids.containsKey(name)) {
+            throw new NoSuchElementException();
+        }
+    }
+
+    private void ensureTableExist(int id) throws NoSuchElementException {
+        if (!item.containsKey(id)) {
+            throw new NoSuchElementException();
+        }
+    }
+
     /**
      * Return the id of the table with a specified name,
      *
@@ -67,7 +106,8 @@ public class Catalog {
      */
     public int getTableId(String name) throws NoSuchElementException {
         // TODO: some code goes here
-        return 0;
+        ensureTableExist(name);
+        return ids.get(name);
     }
 
     /**
@@ -79,7 +119,8 @@ public class Catalog {
      */
     public TupleDesc getTupleDesc(int tableid) throws NoSuchElementException {
         // TODO: some code goes here
-        return null;
+        ensureTableExist(tableid);
+        return item.get(tableid).td;
     }
 
     /**
@@ -91,22 +132,25 @@ public class Catalog {
      */
     public DbFile getDatabaseFile(int tableid) throws NoSuchElementException {
         // TODO: some code goes here
-        return null;
+        ensureTableExist(tableid);
+        return item.get(tableid).file;
     }
 
-    public String getPrimaryKey(int tableid) {
+    public String getPrimaryKey(int tableid) throws NoSuchElementException {
         // TODO: some code goes here
-        return null;
+        ensureTableExist(tableid);
+        return item.get(tableid).pKey;
     }
 
     public Iterator<Integer> tableIdIterator() {
         // TODO: some code goes here
-        return null;
+        return ids.values().iterator();
     }
 
-    public String getTableName(int id) {
+    public String getTableName(int id) throws NoSuchElementException {
         // TODO: some code goes here
-        return null;
+        ensureTableExist(id);
+        return item.get(id).name;
     }
 
     /**
@@ -114,6 +158,8 @@ public class Catalog {
      */
     public void clear() {
         // TODO: some code goes here
+        ids.clear();
+        item.clear();
     }
 
     /**

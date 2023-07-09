@@ -3,7 +3,6 @@ package simpledb.storage;
 import simpledb.common.Catalog;
 import simpledb.common.Database;
 import simpledb.common.DbException;
-import simpledb.common.Debug;
 import simpledb.transaction.TransactionId;
 
 import java.io.*;
@@ -19,13 +18,15 @@ import java.util.NoSuchElementException;
  */
 public class HeapPage implements Page {
 
-    final HeapPageId pid;
-    final TupleDesc td;
-    final byte[] header;
-    final Tuple[] tuples;
-    final int numSlots;
+    private final HeapPageId pid;
+    private final TupleDesc td;
+    private final byte[] header;
+    private final Tuple[] tuples;
+    private final int numSlots;
 
-    byte[] oldData;
+    private TransactionId dirtier;
+
+    private byte[] oldData;
     private final Byte oldDataLock = (byte) 0;
 
     /**
@@ -76,8 +77,8 @@ public class HeapPage implements Page {
      */
     private int getNumTuples() {
         // TODO: some code goes here
-        return 0;
-
+        // floor((page size * 8) / (tuple size * 8 + 1))
+        return (BufferPool.getPageSize() * 8) / (td.getSize() * 8 + 1);
     }
 
     /**
@@ -86,10 +87,9 @@ public class HeapPage implements Page {
      * @return the number of bytes in the header of a page in a HeapFile with each tuple occupying tupleSize bytes
      */
     private int getHeaderSize() {
-
         // TODO: some code goes here
-        return 0;
-
+        // ceiling(tuples per page / 8)
+        return (numSlots + 7) / 8;
     }
 
     /**
@@ -122,7 +122,7 @@ public class HeapPage implements Page {
      */
     public HeapPageId getId() {
         // TODO: some code goes here
-        throw new UnsupportedOperationException("implement this");
+        return pid;
     }
 
     /**
@@ -256,6 +256,20 @@ public class HeapPage implements Page {
     public void deleteTuple(Tuple t) throws DbException {
         // TODO: some code goes here
         // not necessary for lab1
+        if (!t.getTupleDesc().equals(td)) {
+            throw new DbException("mismatched td");
+        }
+        if (!t.getRecordId().getPageId().equals(pid)) {
+            throw new DbException("mismatched pid");
+        }
+        if (t.getRecordId().getTupleNumber() > getNumTuples()) {
+            throw new DbException("too big tuple number");
+        }
+        int tupleNumber = t.getRecordId().getTupleNumber();
+        if (!isSlotUsed(tupleNumber)) {
+            throw new DbException("empty slot");
+        }
+        markSlotUsed(tupleNumber, false);
     }
 
     /**
@@ -269,6 +283,33 @@ public class HeapPage implements Page {
     public void insertTuple(Tuple t) throws DbException {
         // TODO: some code goes here
         // not necessary for lab1
+        if (!t.getTupleDesc().equals(td)) {
+            throw new DbException("mismatched td");
+        }
+        int usable = -1, i = 0;
+        byte full = (byte) 0xff;
+        while (i < header.length) {
+            if (header[i] == full) {
+                i++;
+            } else {
+                break;
+            }
+        }
+        if (i != header.length) {
+            for (int j = 0; j < 8; j++) {
+                if (!isSlotUsed(i * 8 + j)) {
+                    markSlotUsed(i * 8 + j, true);
+                    usable = i * 8 + j;
+                    break;
+                }
+            }
+        }
+        if (usable != -1) {
+            tuples[usable] = t;
+            t.setRecordId(new RecordId(new HeapPageId(pid), usable));
+        } else {
+            throw new DbException("no empty slots");
+        }
     }
 
     /**
@@ -278,6 +319,11 @@ public class HeapPage implements Page {
     public void markDirty(boolean dirty, TransactionId tid) {
         // TODO: some code goes here
         // not necessary for lab1
+        if (dirty) {
+            dirtier = tid;
+        } else {
+            dirtier = null;
+        }
     }
 
     /**
@@ -286,7 +332,24 @@ public class HeapPage implements Page {
     public TransactionId isDirty() {
         // TODO: some code goes here
         // Not necessary for lab1
-        return null;      
+        return dirtier;
+    }
+
+    public int getNumUsedSlots() {
+        int used = 0;
+        byte full = (byte) 0xff;
+        for (int i = 0; i < header.length; i++) {
+            if (header[i] == full) {
+                used += 8;
+            } else {
+                for (int j = 0; j < 8; j++) {
+                    if (isSlotUsed(i * 8 + j)) {
+                        used++;
+                    }
+                }
+            }
+        }
+        return used;
     }
 
     /**
@@ -294,7 +357,7 @@ public class HeapPage implements Page {
      */
     public int getNumUnusedSlots() {
         // TODO: some code goes here
-        return 0;
+        return numSlots - getNumUsedSlots();
     }
 
     /**
@@ -302,7 +365,8 @@ public class HeapPage implements Page {
      */
     public boolean isSlotUsed(int i) {
         // TODO: some code goes here
-        return false;
+        int mask = 1 << (i % 8);
+        return (header[i / 8] & mask) != 0;
     }
 
     /**
@@ -311,6 +375,12 @@ public class HeapPage implements Page {
     private void markSlotUsed(int i, boolean value) {
         // TODO: some code goes here
         // not necessary for lab1
+        int mask = 1 << (i % 8);
+        if (value) {
+            header[i / 8] |= mask;
+        } else {
+            header[i / 8] &= (~mask);
+        }
     }
 
     /**
@@ -319,7 +389,29 @@ public class HeapPage implements Page {
      */
     public Iterator<Tuple> iterator() {
         // TODO: some code goes here
-        return null;
+        return new Iterator<>() {
+            private int index = 0, cur = 0;
+            private final int used = getNumUsedSlots();
+
+            @Override
+            public boolean hasNext() {
+                return cur < used;
+            }
+
+            @Override
+            public Tuple next() {
+                while (!isSlotUsed(index)) {
+                    index++;
+                }
+                cur++;
+                return new TupleView(tuples[index++]);
+            }
+
+            @Override
+            public void remove() throws UnsupportedOperationException {
+                throw new UnsupportedOperationException();
+            }
+        };
     }
 
 }
