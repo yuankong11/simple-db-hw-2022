@@ -459,6 +459,64 @@ public class LogFile {
         //print();
     }
 
+    static class LogEntry {
+        int type;
+        long tid;
+
+        public LogEntry(int type, long tid) {
+            this.type = type;
+            this.tid = tid;
+        }
+
+        // end with start offset
+
+        // begin, abort, commit
+        // update: two image
+        // checkpoint: int tx count, long tid & long start for each tx
+    }
+
+    class LogEntryIterator {
+        long start, position;
+
+        public LogEntryIterator(long start) {
+            this.start = start;
+        }
+
+        void open() throws IOException {
+            position = raf.getFilePointer();
+            raf.seek(start);
+        }
+
+        boolean hasNext() throws IOException {
+            return raf.getFilePointer() < raf.length();
+        }
+
+        LogEntry next() throws IOException {
+            return new LogEntry(raf.readInt(), raf.readLong());
+        }
+
+        void skip(LogEntry e) throws IOException {
+            switch (e.type) {
+                case UPDATE_RECORD:
+                    readPageData(raf);
+                    readPageData(raf);
+                    break;
+                case CHECKPOINT_RECORD:
+                    int txCount = raf.readInt();
+                    for (int i = 0; i < txCount; i++) {
+                        raf.readLong();
+                        raf.readLong();
+                    }
+                    break;
+            }
+            raf.readLong();
+        }
+
+        void close() throws IOException {
+            raf.seek(position);
+        }
+    }
+
     /**
      * Rollback the specified transaction, setting the state of any
      * of pages it updated to their pre-updated state.  To preserve
@@ -474,6 +532,31 @@ public class LogFile {
             synchronized (this) {
                 preAppend();
                 // TODO: some code goes here
+                long start = tidToFirstLogRecord.get(tid.getId());
+                LogEntryIterator it = new LogEntryIterator(start);
+                it.open();
+                while (it.hasNext()) {
+                    LogEntry e = it.next();
+                    if (e.tid != tid.getId()) {
+                        it.skip(e);
+                    } else {
+                        switch (e.type) {
+                            case BEGIN_RECORD:
+                                it.skip(e);
+                                break;
+                            case UPDATE_RECORD:
+                                Page beforeImage = readPageData(raf);
+                                Database.getBufferPool().removePage(beforeImage.getId());
+                                Database.getCatalog().getDatabaseFile(beforeImage.getId().getTableId()).writePage(beforeImage);
+                                readPageData(raf);
+                                raf.readLong();
+                                break;
+                            default:
+                                throw new IllegalStateException();
+                        }
+                    }
+                }
+                it.close();
             }
         }
     }
@@ -503,6 +586,67 @@ public class LogFile {
             synchronized (this) {
                 recoveryUndecided = false;
                 // TODO: some code goes here
+                long checkpoint = raf.readLong();
+                long ckEnd, start;
+                HashMap<Long, Integer> txs = new HashMap<>();
+                if (checkpoint == NO_CHECKPOINT_ID) {
+                    ckEnd = raf.getFilePointer();
+                    start = ckEnd;
+                } else {
+                    raf.seek(checkpoint);
+                    LogEntry e = new LogEntry(raf.readInt(), raf.readLong());
+                    if (e.type != CHECKPOINT_RECORD) {
+                        throw new IllegalStateException();
+                    }
+                    int txCount = raf.readInt();
+                    ckEnd = raf.getFilePointer() + 16L * txCount + 8L;
+                    start = ckEnd;
+                    for (int i = 0; i < txCount; i++) {
+                        txs.put(raf.readLong(), 0);
+                        start = Math.min(start, raf.readLong());
+                    }
+                }
+                LogEntryIterator it = new LogEntryIterator(ckEnd);
+                it.open();
+                while (it.hasNext()) {
+                    LogEntry entry = it.next();
+                    switch (entry.type) {
+                        case ABORT_RECORD:
+                            txs.put(entry.tid, -1);
+                            break;
+                        case COMMIT_RECORD:
+                            txs.put(entry.tid, 1);
+                            break;
+                        case BEGIN_RECORD:
+                            txs.put(entry.tid, 0);
+                            break;
+                    }
+                    it.skip(entry);
+                }
+                it.close();
+                it = new LogEntryIterator(start);
+                it.open();
+                while (it.hasNext()) {
+                    LogEntry entry = it.next();
+                    if (txs.containsKey(entry.tid) && entry.type == UPDATE_RECORD) {
+                        if (txs.get(entry.tid) == 1) {
+                            readPageData(raf);
+                            Page afterImage = readPageData(raf);
+                            Database.getBufferPool().removePage(afterImage.getId());
+                            Database.getCatalog().getDatabaseFile(afterImage.getId().getTableId()).writePage(afterImage);
+                        } else {
+                            Page beforeImage = readPageData(raf);
+                            Database.getBufferPool().removePage(beforeImage.getId());
+                            Database.getCatalog().getDatabaseFile(beforeImage.getId().getTableId()).writePage(beforeImage);
+                            readPageData(raf);
+                        }
+                        raf.readLong();
+                    } else {
+                        it.skip(entry);
+                    }
+                }
+                it.close();
+                raf.seek(raf.length());
             }
         }
     }

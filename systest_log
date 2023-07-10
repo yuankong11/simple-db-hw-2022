@@ -1,0 +1,185 @@
+Buildfile: /mnt/d/code/simple-db-hw-2022/build.xml
+
+compile:
+
+testcompile:
+
+systemtest:
+    [junit] Running simpledb.systemtest.AbortEvictionTest
+    [junit] Testsuite: simpledb.systemtest.AbortEvictionTest
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.094 sec
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.094 sec
+    [junit] 
+    [junit] Testcase: testDoNotEvictDirtyPages took 0.086 sec
+    [junit] Running simpledb.systemtest.AggregateTest
+    [junit] Testsuite: simpledb.systemtest.AggregateTest
+    [junit] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.122 sec
+    [junit] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.122 sec
+    [junit] 
+    [junit] Testcase: testAverageNoGroup took 0.068 sec
+    [junit] Testcase: testMax took 0.011 sec
+    [junit] Testcase: testMin took 0.009 sec
+    [junit] Testcase: testSum took 0.01 sec
+    [junit] Testcase: testCount took 0.009 sec
+    [junit] Testcase: testAverage took 0.007 sec
+    [junit] Running simpledb.systemtest.BTreeFileDeleteTest
+    [junit] Testsuite: simpledb.systemtest.BTreeFileDeleteTest
+    [junit] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.198 sec
+    [junit] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.198 sec
+    [junit] 
+    [junit] Testcase: testRedistributeLeafPages took 0.075 sec
+    [junit] Testcase: testDeleteInternalPages took 0.781 sec
+    [junit] Testcase: testReuseDeletedPages took 0.033 sec
+    [junit] Testcase: testDeleteRootPage took 0.011 sec
+    [junit] Testcase: testMergeLeafPages took 0.016 sec
+    [junit] Testcase: testRedistributeInternalPages took 1.272 sec
+    [junit] Running simpledb.systemtest.BTreeFileInsertTest
+    [junit] Testsuite: simpledb.systemtest.BTreeFileInsertTest
+    [junit] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.011 sec
+    [junit] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.011 sec
+    [junit] 
+    [junit] Testcase: testSplitLeafPage took 0.076 sec
+    [junit] Testcase: addTuple took 0.055 sec
+    [junit] Testcase: testSplitInternalPage took 0.528 sec
+    [junit] Testcase: addDuplicateTuples took 0.082 sec
+    [junit] Testcase: testSplitRootPage took 1.259 sec
+    [junit] Running simpledb.systemtest.BTreeScanTest
+    [junit] Testsuite: simpledb.systemtest.BTreeScanTest
+    [junit] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.807 sec
+    [junit] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.807 sec
+    [junit] 
+    [junit] Testcase: testRewindPredicates took 0.085 sec
+    [junit] Testcase: testSmall took 0.653 sec
+    [junit] Testcase: testReadPage took 0.054 sec
+    [junit] Testcase: testRewind took 0.006 sec
+    [junit] Running simpledb.systemtest.BTreeTest
+    [junit] Testsuite: simpledb.systemtest.BTreeTest
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 51.158 sec
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 51.158 sec
+    [junit] ------------- Standard Output ---------------
+    [junit] Creating large random B+ tree...
+    [junit] Inserting tuples...
+    [junit] Inserting and deleting tuples...
+    [junit] Deleting tuples...
+    [junit] Inserting tuples...
+    [junit] Searching for tuples...
+    [junit] Performing sanity checks...
+    [junit] ------------- ---------------- ---------------
+    [junit] 
+    [junit] Testcase: testBigFile took 51.15 sec
+    [junit] Running simpledb.systemtest.DeleteTest
+    [junit] Testsuite: simpledb.systemtest.DeleteTest
+    [junit] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.187 sec
+    [junit] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.187 sec
+    [junit] 
+    [junit] Testcase: testLessThan took 0.09 sec
+    [junit] Testcase: testLessThanOrEq took 0.026 sec
+    [junit] Testcase: testGreaterThanOrEq took 0.021 sec
+    [junit] Testcase: testGreaterThan took 0.018 sec
+    [junit] Testcase: testEquals took 0.024 sec
+    [junit] Running simpledb.systemtest.EvictionTest
+    [junit] Testsuite: simpledb.systemtest.EvictionTest
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.555 sec
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.555 sec
+    [junit] ------------- Standard Output ---------------
+    [junit] EvictionTest creating large table
+    [junit] EvictionTest scanning large table
+    [junit] EvictionTest scan complete, testing memory usage of scan
+    [junit] ------------- ---------------- ---------------
+    [junit] 
+    [junit] Testcase: testHeapFileScanWithManyPages took 0.548 sec
+    [junit] Running simpledb.systemtest.FilterTest
+    [junit] Testsuite: simpledb.systemtest.FilterTest
+    [junit] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.109 sec
+    [junit] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.109 sec
+    [junit] 
+    [junit] Testcase: testLessThan took 0.052 sec
+    [junit] Testcase: testLessThanOrEq took 0.016 sec
+    [junit] Testcase: testGreaterThanOrEq took 0.012 sec
+    [junit] Testcase: testGreaterThan took 0.01 sec
+    [junit] Testcase: testEquals took 0.01 sec
+    [junit] Running simpledb.systemtest.InsertTest
+    [junit] Testsuite: simpledb.systemtest.InsertTest
+    [junit] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.074 sec
+    [junit] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.074 sec
+    [junit] 
+    [junit] Testcase: testOneToEmpty took 0.051 sec
+    [junit] Testcase: testEmptyToOne took 0.005 sec
+    [junit] Testcase: testOneToOne took 0.006 sec
+    [junit] Testcase: testEmptyToEmpty took 0.003 sec
+    [junit] Running simpledb.systemtest.JoinTest
+    [junit] Testsuite: simpledb.systemtest.JoinTest
+    [junit] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.071 sec
+    [junit] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.071 sec
+    [junit] 
+    [junit] Testcase: testMultipleMatch took 0.053 sec
+    [junit] Testcase: testNoMatch took 0.006 sec
+    [junit] Testcase: testSingleMatch took 0.005 sec
+    [junit] Running simpledb.systemtest.LogTest
+    [junit] Testsuite: simpledb.systemtest.LogTest
+    [junit] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.203 sec
+    [junit] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.203 sec
+    [junit] 
+    [junit] Testcase: TestCommitAbortCommitCrash took 0.072 sec
+    [junit] Testcase: TestOpenCrash took 0.011 sec
+    [junit] Testcase: TestFlushAll took 0.006 sec
+    [junit] Testcase: TestCommitCrash took 0.007 sec
+    [junit] Testcase: TestOpenCommitOpenCrash took 0.018 sec
+    [junit] Testcase: TestAbort took 0.008 sec
+    [junit] Testcase: TestAbortCommitInterleaved took 0.033 sec
+    [junit] Testcase: TestOpenCommitCheckpointOpenCrash took 0.02 sec
+    [junit] Testcase: TestAbortCrash took 0.012 sec
+    [junit] Testcase: PatchTest took 0.005 sec
+    [junit] Running simpledb.systemtest.QueryTest
+    [junit] Testsuite: simpledb.systemtest.QueryTest
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.668 sec
+    [junit] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.668 sec
+    [junit] ------------- Standard Output ---------------
+    [junit] Started a new transaction tid = 5
+    [junit] Added scan of table emp
+    [junit] Added scan of table dept
+    [junit] Added scan of table hobbies
+    [junit] Added scan of table hobby
+    [junit] Added join between emp.c1 and dept.c0
+    [junit] Added join between hobbies.c0 and emp.c2
+    [junit] Added join between hobbies.c1 and hobby.c0
+    [junit] Added select list field null.*
+    [junit] The query plan is:
+    [junit]                                                  π(emp.c0,emp.c1,emp.c2,emp.c3,emp.c4,emp.c5,dept.c0,dept.c1,dept.c2,hobbies.c0,hobbies.c1,hobby.c0,hobby.c1,hobby.c2,hobby.c3,hobby.c4,hobby.c5),card:200000
+    [junit]                                                  |
+    [junit]                                                  ⨝(hobbies.c1=hobby.c0),card:200000
+    [junit]                                __________________|__________________
+    [junit]                                |                                   |
+    [junit]                                ⨝(emp.c2=hobbies.c0),card:200000    |
+    [junit]                 _______________|________________                   |
+    [junit]                 |                              |                   |
+    [junit]                 ⨝(emp.c1=dept.c0),card:1483    |                   |
+    [junit]   ______________|______________                |                   |
+    [junit]   |                           |                |                   |
+    [junit]   σ(emp.c3<1000),card:1483    |                |                   |
+    [junit]   |                           |              scan(hobbies)         |
+    [junit] scan(emp)                   scan(dept)                           scan(hobby)
+    [junit] 
+    [junit] emp.c0	emp.c1	emp.c2	emp.c3	emp.c4	emp.c5	dept.c0	dept.c1	dept.c2	hobbies.c0	hobbies.c1	hobby.c0	hobby.c1	hobby.c2	hobby.c3	hobby.c4	hobby.c5	
+    [junit] ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    [junit] 35617	25331	848	574	47435	44427	25331	15810	62576	848	58879	58879	4420	50988	63938	30679	63702
+    [junit] 49051	21311	16330	111	62984	32497	21311	12934	64756	16330	36416	36416	55415	59597	2207	52212	27978
+    [junit] 36365	18530	39573	401	28480	42975	18530	12018	25146	39573	36978	36978	60754	952	19819	33476	8424
+    [junit] 
+    [junit]  3 rows.
+    [junit] Transaction 5 committed.
+    [junit] ------------- ---------------- ---------------
+    [junit] 
+    [junit] Testcase: queryTest took 1.661 sec
+    [junit] Running simpledb.systemtest.ScanTest
+    [junit] Testsuite: simpledb.systemtest.ScanTest
+    [junit] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.392 sec
+    [junit] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.392 sec
+    [junit] 
+    [junit] Testcase: testTupleDesc took 0.053 sec
+    [junit] Testcase: testCache took 0.199 sec
+    [junit] Testcase: testSmall took 0.128 sec
+    [junit] Testcase: testRewind took 0.003 sec
+
+BUILD SUCCESSFUL
+Total time: 1 minute 3 seconds
